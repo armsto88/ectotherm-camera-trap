@@ -58,3 +58,14 @@ This system ensures better reliability when detecting animals that do not emit s
 - ⚠️ ESP32-CAM board deprecated for this project due to GPIO and stability limitations
 
 ---
+
+## 🚀 Planned Future Improvements
+
+- Improve photo quality by optimizing camera parameters and memory handling.
+- Implement **Deep Sleep Mode** to drastically reduce power consumption between triggers.
+- Add support for **off-grid solar-powered battery operation** for remote deployments.
+- Integrate **additional PIR sensor option** alongside the Time-of-Flight sensor:
+  - Allow user-selectable triggers: Laser (ToF) / PIR / Both.
+- Expand burst capture functionality: take multiple consecutive images on trigger.
+- Explore Wi-Fi capabilities for wireless photo access or telemetry.
+
