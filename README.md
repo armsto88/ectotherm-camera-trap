@@ -1,50 +1,60 @@
-# 🦎 ESP32 Camera Trap for Ectotherm Detection
+# ESP32 Camera Trap for Ectotherm Detection
 
-A low-cost, DIY wildlife camera trap that detects and photographs **ectothermic animals** (such as reptiles and amphibians) using a **Time-of-Flight (ToF) distance sensor** instead of a traditional PIR sensor. Designed for better reliability when monitoring animals that do not emit significant body heat.
+A low-cost, DIY wildlife camera trap designed to improve the monitoring of **ectothermic animals** (such as reptiles and amphibians) by using a **Time-of-Flight (ToF) distance sensor** instead of a traditional PIR sensor.  
+This system ensures better reliability when detecting animals that do not emit significant body heat.
 
 ---
 
 ## 🎯 Project Goals
 
-- 📸 Use a camera (OV2640) to capture high-resolution images
-- 💾 Store photos on a microSD card
-- 🧠 Detect animals using a **VL53L0X** Time-of-Flight sensor
-- 🦎 Improve detection of ectotherms over PIR-based systems
-- 🔋 Run efficiently for field deployment
-- 🛠️ Allow future expansion (e.g., wireless transmission, interrupt triggers)
+- Use an OV2640 camera module to capture images when an animal is detected.
+- Store captured photos on a microSD card, organized by date.
+- Detect nearby movement using a **VL53L0X** Time-of-Flight sensor.
+- Improve detection success for ectotherms over standard PIR-based systems.
+- Ensure stable, low-power operation for extended field deployments.
+- Allow for future expansion (e.g., deep sleep modes, burst capture, wireless file access).
 
 ---
 
 ## 📦 Hardware
 
 - **ESP32-WROVER Dev Module**
-  - Built-in PSRAM (required for camera)
-  - USB Serial for easy debugging
-- **OV2640 Camera Module** (external)
-- **MicroSD card module** (SPI)
-- **VL53L0X ToF Distance Sensor**
-- **Optional:**
-  - XSHUT line to power-cycle sensor
-  - GPIO-based interrupt trigger for low-power modes
+  - Built-in PSRAM (required for high-resolution camera frames)
+  - Stable USB Serial for debugging
+- **OV2640 Camera Module** (external connection)
+- **MicroSD Card Module** (SPI interface)
+- **VL53L0X Time-of-Flight Distance Sensor**
+- **DS3231 RTC Module** (for timestamping and folder organization)
+
+**Optional Additions:**
+- XSHUT line for power-cycling the VL53L0X sensor
+- GPIO-based external interrupts for deep sleep wake-up
+- Solar panel and battery system for remote, long-term deployment
 
 ---
 
-## 🧠 How It Works
+## 🧠 System Overview
 
-1. The **VL53L0X** continuously measures distance.
-2. When an object is detected within a configurable range (e.g. < 400 mm), the ESP32:
-   - Captures a photo using the camera
-   - Saves it to the SD card
-   - Logs the event over Serial (and optionally to a file)
-3. Future versions will support deep sleep and interrupt wakeups for ultra-low power deployment.
+1. **VL53L0X** continuously monitors distance to detect nearby animals.
+2. When an object is detected within a configurable range (e.g., <100 mm):
+   - The ESP32 captures an image using the OV2640 camera.
+   - The photo is saved on the microSD card inside a folder `/images/YYYY-MM-DD/`.
+   - A visual confirmation is given via onboard LED flash.
+   - A 5-second cooldown prevents rapid re-triggering.
+3. **DS3231 RTC** provides real timestamps for file and folder organization.
+4. Future versions will focus on deep sleep modes, photo bursts, and solar-charging field versions.
 
 ---
 
-## 🔧 Status
+## 🔧 Current Features and Status
 
-- ✅ VL53L0X live distance reading via I²C
-- ✅ Camera capture working on ESP32-WROVER
-- ✅ Photos saved to SD card
-- ⚠️ ESP32-CAM board deprecated for this project due to GPIO limitations
+- ✅ VL53L0X live distance readings over Software I²C (GPIO32/33)
+- ✅ Camera stable image capture at QVGA (320x240) resolution
+- ✅ Photos stored reliably on SD card, organized by date
+- ✅ DS3231 RTC integration for accurate timestamps
+- ✅ Onboard LED blinks after each successful capture
+- ✅ Automatic folder creation on SD card
+- ✅ Fully autonomous distance-triggered operation
+- ⚠️ ESP32-CAM board deprecated for this project due to GPIO and stability limitations
 
 ---
