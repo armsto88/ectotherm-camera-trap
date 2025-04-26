@@ -70,49 +70,49 @@ Switch to the ESP32-WROVER Dev Module, which offers:
 
 ---
 
-## 📅 26.04.2025 – Full System Integration and Laser-Triggered Capture with Organized Storage
+# 📅 26.04.2025 – Full System Integration and Laser-Triggered Capture with Organized Storage
 
-### 🎯 Today's Goal
+## 🎯 Today's Goal
 
 - Integrate ESP32-WROVER, VL53L0X ToF sensor, camera module, SD card, and RTC module into one fully working wildlife camera trap system.
 - Capture a photo automatically when an object is detected within 100mm range.
 - Save captured images organized by date into `/images/YYYY-MM-DD/` folders on the SD card.
-- Provide a visual confirmation via LED blink after each successful capture.
+- Provide a visual confirmation via onboard LED blink after each successful capture.
 - Ensure stable operation (no crashes, no image glitches) at QVGA resolution for long-term field deployment.
 
 ---
 
-### Major Achievements
+## Major Achievements
 
-- Camera initialized reliably with clean frame captures
-- SD card mounted and structured folder organization working
-- VL53L0X ToF sensor reads continuous distance data
-- DS3231 RTC providing real-time timestamps for filenames and folder organization
-- System triggers and saves capture cleanly when distance < 100mm
-- Onboard LED blinks after each successful photo capture
-- Stable memory handling at QVGA resolution
-- Full separation of buses:
-  - Camera uses dedicated parallel bus
-  - SD card uses HSPI bus (GPIO14/12/13/15)
-  - VL53L0X and RTC share Software I²C bus on GPIO32/33
+- Camera initialized reliably with clean frame captures.
+- SD card mounted and structured folder organization working.
+- VL53L0X ToF sensor reads continuous distance data reliably.
+- DS3231 RTC providing real-time timestamps for filenames and folder organization.
+- System triggers and saves captures cleanly when distance < 100mm.
+- Onboard LED blinks after each successful photo capture.
+- Stable memory handling at QVGA resolution.
+- Full separation of hardware buses:
+  - Camera uses dedicated parallel bus.
+  - SD card uses HSPI bus (GPIO14/12/13/15).
+  - VL53L0X and RTC share Software I²C bus on GPIO32/33.
 - No conflicts between Camera, SD card, ToF sensor, or RTC.
 
 ---
 
-### Problems Encountered and Solutions
+## Problems Encountered and Solutions
 
 | Problem | Solution |
 |---------|----------|
-| I2C/SPI bus conflict with camera and SD card | Carefully separated SD card to HSPI, VL53L0X and RTC to Software I²C |
-| SPI bus conflict when using default VSPI pins | Moved SD card to HSPI (GPIO14/12/13/15) |
-| Camera image glitches (horizontal line artifacts) | Lowered camera XCLK frequency from 20 MHz ➔ 16 MHz |
-| SD card mount failures during fast boot | Added a 300 ms stabilization delay after SPI begin |
-| Large frame memory overflow at VGA resolution | Reduced frame size to QVGA for long-term stability |
-| Failed folder creation for date organization | Auto-create `/images` base folder during setup |
+| I2C/SPI bus conflict with camera and SD card | Carefully separated SD card to HSPI, VL53L0X and RTC to Software I²C. |
+| SPI bus conflict when using default VSPI pins | Moved SD card to HSPI (GPIO14/12/13/15). |
+| Camera image glitches (horizontal line artifacts) | Lowered camera XCLK frequency from 20 MHz ➔ 16 MHz. |
+| SD card mount failures during fast boot | Added a 300 ms stabilization delay after SPI begin. |
+| Large frame memory overflow at VGA resolution | Reduced frame size to QVGA for stable operation. |
+| Failed folder creation for date organization | Automatically create `/images` base folder during setup. |
 
 ---
 
-### Final Working Architecture
+## Final Working Architecture
 
 | Peripheral | GPIO Pins | Notes |
 |------------|-----------|-------|
@@ -124,29 +124,34 @@ Switch to the ESP32-WROVER Dev Module, which offers:
 
 ---
 
-### Summary of Final System Behavior
+## Summary of Final System Behavior
 
 - VL53L0X continuously monitors distance every 200 ms.
 - When an object approaches within 100mm:
-  - Camera captures a JPEG frame (QVGA 320x240 resolution)
-  - Saves photo into `/images/YYYY-MM-DD/photo_HH-MM-SS.jpg`
-  - Automatically creates dated folders for clean organization
-  - LED blinks briefly after each capture
+  - Camera captures a JPEG frame (QVGA 320x240 resolution).
+  - Saves the photo into `/images/YYYY-MM-DD/photo_HH-MM-SS.jpg`.
+  - Automatically creates dated folders for clean organization.
+  - LED blinks briefly after each capture.
 - System pauses for 5 seconds to prevent repeated triggers.
 - Fully autonomous loop for long-term remote deployment.
 
 ---
 
-### Possible Future Improvements
+## 🚀 Planned Future Improvements
 
-- Add photo counters to filenames for easier analysis (e.g., `/photo_001.jpg`)
-- Implement burst mode (multiple photos per trigger)
-- Add Deep Sleep Mode to massively extend battery life
-- Add solar panel + battery management for remote operation
-- Implement Wi-Fi based photo retrieval over a local access point
+- Improve photo quality by tuning camera parameters (sharpness, saturation, compression).
+- Implement **Deep Sleep Mode** to drastically reduce power consumption between triggers.
+- Add support for **off-grid solar-powered battery operation** for remote field deployment.
+- Integrate **additional PIR sensor option** alongside the ToF sensor:
+  - Allow user-selectable triggers: Laser (ToF) / PIR / Both.
+- Introduce **photo counters** for better organization (e.g., `/photo_001.jpg`, `/photo_002.jpg`).
+- Add **burst capture mode**: take multiple consecutive images on trigger.
+- Implement **Wi-Fi photo retrieval** (local AP or ESP-NOW protocol).
+- Develop a basic settings menu via Serial Monitor or SD config file.
 
 ---
 
-📝 **Status:** The ESP32 Wildlife Camera Trap is now fully stable, capable of autonomous field operation with cleanly structured image storage.
+📝 **Status:**  
+The ESP32 Wildlife Camera Trap is now fully stable, capable of autonomous field operation with cleanly structured image storage.
 
-**Next major steps could involve burst shooting or power optimization for multi-week deployments.**
+
