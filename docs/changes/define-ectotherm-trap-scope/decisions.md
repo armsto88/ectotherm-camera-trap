@@ -603,3 +603,131 @@
   1 (a SIM or a gateway per site, and not wanted for version 1).
 - **Replaces:** 28 (an optional add-on that sends a daily message where coverage exists becomes a
   daily state summary on the memory card, with no radio in version 1).
+
+## 52. Where does the solar panel sit?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** On a short stake a little away from the bucket, angled to the sun, with a cable to
+  the trap.
+- **Reason:** Keeps the panel's heat off the passage, lets it stand in the sunniest spot nearby, and
+  leaves the bucket top free for the daylight option of entry 38. The accepted cost: a cable that
+  animals may chew and people may trip on, and one more thing to set up.
+- **Rejected:** On the bucket top on spacers (warms the hood in sun, sits wherever the fence puts
+  it, rules out daylight through the top); on a fence post (drift fences often have no post tall or
+  firm enough).
+
+## 53. How large is the battery pack?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Two 18650 lithium-ion cells in parallel, about 7 Ah.
+- **Reason:** By the estimate of about 25 mAh a day at 200 passes a day (entry 46), the trap lasts a
+  whole season without sun, so it survives a shaded or covered panel and a load well above the
+  estimate. The accepted cost: more cost, weight and space than one cell.
+- **Rejected:** One 18650 cell of about 3.4 Ah (little margin if the real load is several times the
+  estimate, or in frost).
+
+## 54. How wide is the passage?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** 15 cm.
+- **Reason:** Chosen on the round 2 page of propose, without a note; it lets larger animals through
+  as well. The accepted weaknesses: longer beams, a larger view with less detail per animal (still
+  an estimated 8 to 10 pixels per millimetre), and a bucket of about 30 cm diameter, in which the
+  passage is about 26 cm long.
+- **Rejected:** 6 cm (large toads and large skinks do not fit or will not enter); 10 cm (no reason
+  given).
+
+## 55. How does the passage floor meet the ground?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** The floor lies flush with the ground at both ends, with no raised threshold.
+- **Reason:** Animals walk in without climbing; it also differs from the raised threshold of the
+  Hobbs patent (entry 11).
+- **Rejected:** A raised threshold, as in HALT (beams sit above debris, but animals must climb).
+
+## 56. Which pictures may the filter on the trap drop?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Only pictures of passes that only the PIR sensor noticed and that look the same as
+  the daily empty view; any pass the lasers noticed keeps all its pictures.
+- **Reason:** A laser interruption is strong evidence of something real, so the filter can only err
+  on the side of keeping (entry 23).
+- **Rejected:** Judging every picture by how much it differs from the empty view (a filter on all
+  passes could drop real animals the lasers saw).
+
+## 57. How many pictures does a pass get?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** One as soon as the camera is ready, then one every half second while the animal is
+  in the passage, at most six.
+- **Reason:** Several chances at a sharp picture without filling the card; fits the 200 passes a day
+  of entry 46.
+- **Rejected:** One picture per pass (a single blurred or badly timed picture loses the
+  identification).
+
+## 58. What if the camera wakes too slowly?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** If the bench test shows the camera wakes too slowly for the target speeds, the
+  camera is kept on standby rather than switched off.
+- **Reason:** Entry 39 relies on the camera waking in time; standby is the fallback, at the cost of
+  more power.
+- **Rejected:** A longer passage (more hesitation at the entrance, and a 30 cm bucket leaves no
+  room).
+
+## 59. Which controller is the beam watcher?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** An ATtiny3216, built with PlatformIO and the Arduino framework (megaTinyCore).
+- **Reason:** Sleeps on about a microamp, wakes on its own timer to pulse the beams, and fits the
+  tools of entry 47.
+- **Rejected:** An STM32L0 (more capable, but more setup).
+
+## 60. What is the state summary's format?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** One FieldMesh reading per day: the usual fields such as time, trap number, battery
+  voltage and temperature, plus trap fields for passes, free storage and a clear view, which the
+  FieldMesh backend stores although it does not model them yet.
+- **Reason:** Valid against today's FieldMesh upload contract, with no FieldMesh change needed for
+  version 1; issue #1 can add the fields to the contract later.
+- **Rejected:** Putting the trap's values into the generic aux1 and aux2 fields (their meaning would
+  live only in documents).
+
+## 61. How is the pack charged?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Solar charging reuses the FieldHub's 6 V charger design (CN3791), with charging
+  stopped below freezing.
+- **Reason:** A tested design the user already has; lithium-ion must not charge in frost.
+- **Rejected:** A new charger design (more work and testing for no gain).
+
+## 62. Which tools draw the hardware?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** The bucket insert is a FreeCAD Python script with the bucket's size as parameters,
+  like FieldMesh's sensor housings; the boards are drawn in EasyEDA, like the FieldMesh boards.
+- **Reason:** The same tools as the user's other hardware; one script makes inserts for different
+  buckets (entry 43).
+- **Rejected:** KiCad for the boards and OpenSCAD for the insert (new tools for no gain).
+
+## 63. How is the broad-group model made?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** A small pretrained image model, fine-tuned with PyTorch on the trap's labelled
+  pictures; until enough labels exist, the tool only marks empty pictures and people sort the rest.
+- **Reason:** No ready model knows small animals seen from above in a passage; the labels of entries
+  22 and 15 train it.
+- **Rejected:** An existing camera-trap detector such as MegaDetector (trained on side views of
+  larger animals).
+
+## 64. How is the trap tested?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** At three levels: unit tests run on a computer for firmware logic and the sorting
+  tool; bench runs with a model-animal rig whose records are checked by scripts; and written check
+  procedures for what only a person can check, such as gaps beside the trap.
+- **Reason:** Most scenarios are about hardware meeting animals; each still gets a test that names
+  its scenario.
+- **Rejected:** Unit tests only, with bench results noted by hand (no repeatable check for most
+  scenarios).
