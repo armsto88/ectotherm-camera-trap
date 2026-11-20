@@ -11,7 +11,7 @@ test carrying `# spec: <id>`.
   links to `prototype/`.
 
 ## 2. Firmware logic, tested on the computer
-- [ ] 2.1 Build the link header `firmware/shared/include/link.h` and the watcher library `beams`
+- [x] 2.1 Build the link header `firmware/shared/include/link.h` and the watcher library `beams`
   (`BeamFilter`, `PointTracker`, `StuckBeams`), with a PlatformIO `native` environment for its unit
   tests.
   Done when: unit tests show steady light cancelled, one entered and one left crossing per broken
