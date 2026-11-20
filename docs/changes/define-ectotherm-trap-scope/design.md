@@ -423,6 +423,9 @@ next to a copy of the trap's card from that run.
 - `hardware/boards/`: EasyEDA exports of the watcher and beam boards and the main board
 - `docs/testing/`: written check procedures, the controlled-test plan and the field-phase procedure
 
+### Modified
+- `.gitignore`: PlatformIO and Python build output
+
 ### Renamed
 - `code.ino` → `prototype/code.ino`
 - `README.md` → `prototype/README.md`

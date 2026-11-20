@@ -4,7 +4,7 @@ Each task is one commit with its tests. Every scenario in a task's Tests list ge
 test carrying `# spec: <id>`.
 
 ## 1. Repository layout
-- [ ] 1.1 Move `code.ino`, `README.md` and `Dev-BLOG.md` unchanged to `prototype/`; add a new
+- [x] 1.1 Move `code.ino`, `README.md` and `Dev-BLOG.md` unchanged to `prototype/`; add a new
   top-level `README.md` describing the trap, the folders `firmware/`, `sorting/`, `bench/`,
   `hardware/` and `docs/testing/`, and a `.gitignore` for PlatformIO and Python build output.
   Done when: git shows the three files as renamed, and the new `README.md` describes the trap and

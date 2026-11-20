@@ -731,3 +731,13 @@
   its scenario.
 - **Rejected:** Unit tests only, with bench results noted by hand (no repeatable check for most
   scenarios).
+
+## 65. Does the change ignore build output in git?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** Yes. The design's Impact gains `.gitignore`, which task 1.1 extends with PlatformIO
+  and Python build output; it already ignores Python's cache folders since oekospec was installed.
+- **Reason:** Task 1.1 asks for the file, but the design's Impact left it out; the design was wrong,
+  not the task.
+- **Rejected:** Dropping the `.gitignore` from task 1.1 (build output would show up in every
+  commit).
