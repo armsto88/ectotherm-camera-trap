@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>oekospec</title>
+<style>
+/* The frame of every decision page. It loads nothing from other machines. */
+:root {
+  --bg: #f6f5f2; --surface: #ffffff; --text: #1d1d1b; --muted: #5f5e5a; --border: #dcd9d1;
+  --accent: #2f6b4f; --accent-soft: #e5efe9; --weak: #8a5a00; --missing: #b3261e;
+  --info-bg: #e8f1fb; --info-border: #9cc3ea; --info-text: #173f66; --app-head: #eef0f3;
+  --new-bg: #e5efe9; --gone: #b3261e; --shadow: 0 1px 2px rgba(0, 0, 0, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --surface: #201f1d; --text: #ecebe6; --muted: #a8a69f; --border: #3a3935;
+    --accent: #7cc4a0; --accent-soft: #1d3128; --weak: #e2b45a; --missing: #f2877e;
+    --info-bg: #15283b; --info-border: #2f5880; --info-text: #cfe3f7; --app-head: #2a2a2e;
+    --new-bg: #1d3128; --gone: #f2877e; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --surface: #201f1d; --text: #ecebe6; --muted: #a8a69f; --border: #3a3935;
+  --accent: #7cc4a0; --accent-soft: #1d3128; --weak: #e2b45a; --missing: #f2877e;
+  --info-bg: #15283b; --info-border: #2f5880; --info-text: #cfe3f7; --app-head: #2a2a2e;
+  --new-bg: #1d3128; --gone: #f2877e; --shadow: none;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 780px; margin: 0 auto; padding: 32px 16px 140px; }
+.kicker { color: var(--muted); font-size: 14px; letter-spacing: .02em; }
+h1 { font-size: 28px; line-height: 1.2; margin: 4px 0 12px; }
+h2 { font-size: 19px; margin: 40px 0 4px; }
+.sub { color: var(--muted); margin: 0 0 14px; }
+.intro p { margin: 0 0 8px; }
+.notice {
+  background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info-text);
+  border-radius: 8px; padding: 10px 12px;
+}
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px 18px 14px; margin: 14px 0; box-shadow: var(--shadow);
+}
+.card.missing { border-color: var(--missing); }
+.qhead { display: flex; gap: 10px; align-items: baseline; }
+.num {
+  flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft);
+  color: var(--accent); font-weight: 600; font-size: 14px; display: grid; place-items: center;
+}
+h3 { font-size: 17px; margin: 0; }
+.ctx { color: var(--muted); margin: 6px 0 12px; }
+details.more {
+  border-left: 3px solid var(--accent-soft); padding: 2px 0 2px 12px; margin: -4px 0 12px;
+}
+details.more summary { cursor: pointer; color: var(--accent); font-size: 15px; }
+.more-body { font-size: 15px; margin-top: 6px; }
+.more-body p { margin: 0 0 8px; }
+.qfree {
+  border: 1px dashed var(--border); border-radius: 10px; padding: 12px; margin: 0 0 12px;
+  overflow-x: auto;
+}
+.qfree > p { margin: 0 0 10px; font-size: 15px; }
+.opts { display: grid; gap: 8px; }
+.opt {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 10px;
+}
+.opt:hover { border-color: var(--accent); }
+.opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opt.chat { border-style: dashed; }
+.opt input { margin-top: 5px; accent-color: var(--accent); }
+.olabel { font-weight: 600; }
+.badge {
+  display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 99px; font-size: 12px;
+  font-weight: 600; color: var(--accent); border: 1px solid var(--accent); vertical-align: 2px;
+}
+.otext, .why, .weak { display: block; font-size: 15px; }
+.why { margin-top: 2px; }
+.weak { color: var(--weak); margin-top: 2px; }
+textarea {
+  width: 100%; margin-top: 10px; padding: 8px 10px; border-radius: 8px; resize: vertical;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit;
+  font-size: 15px; min-height: 38px; height: 38px;
+}
+textarea:focus { height: 80px; outline: 2px solid var(--accent); outline-offset: -1px; }
+details.item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  margin: 8px 0; box-shadow: var(--shadow);
+}
+details.item summary {
+  list-style: none; cursor: pointer; padding: 11px 14px; display: flex; gap: 10px;
+  align-items: baseline;
+}
+details.item summary::-webkit-details-marker { display: none; }
+details.item summary::before { content: "▸"; color: var(--muted); flex: none; }
+details.item[open] summary::before { content: "▾"; }
+.stitle { flex: 1; }
+.state {
+  flex: none; font-size: 12px; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 99px; padding: 0 8px;
+}
+.state.changed { color: var(--weak); border-color: var(--weak); }
+.ibody { padding: 0 14px 12px 34px; }
+.ibody p { margin: 0 0 6px; font-size: 15px; }
+.choice { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; font-size: 15px; }
+.choice label { display: flex; gap: 6px; align-items: baseline; cursor: pointer; }
+.choice input { accent-color: var(--accent); }
+.muted { color: var(--muted); }
+#free { height: 70px; }
+.rv-group { margin: 22px 0 6px; font-size: 15px; color: var(--muted); font-weight: 600; }
+.rv {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  margin: 8px 0; box-shadow: var(--shadow);
+}
+.rv.edited { border-color: var(--weak); }
+.rv-head {
+  display: flex; gap: 10px; align-items: baseline; padding: 11px 14px; list-style: none;
+}
+details.rv > .rv-head { cursor: pointer; }
+.rv-head::-webkit-details-marker { display: none; }
+details.rv > .rv-head::before { content: "▸"; color: var(--muted); flex: none; }
+details.rv[open] > .rv-head::before { content: "▾"; }
+.rv-title { flex: 1; font-weight: 600; }
+.rv-title small { display: block; font-weight: 400; color: var(--muted); font-size: 14px; }
+.rv-body { padding: 0 14px 12px 14px; }
+details.rv .rv-body { padding-left: 34px; }
+.rv-text { font-size: 15px; }
+.rv-text p, .rv-text pre { margin: 0 0 8px; }
+.rv-text ul, .rv-text ol { margin: 0 0 8px; padding-left: 20px; }
+.rv-text li { margin: 0 0 4px; }
+.rv-text code { font-size: 13px; background: var(--bg); padding: 0 4px; border-radius: 4px; }
+.rv-text pre { background: var(--bg); padding: 8px; border-radius: 6px; overflow-x: auto; }
+.rv-edit {
+  height: auto; min-height: 160px; font-family: ui-monospace, Menlo, monospace; font-size: 13px;
+}
+.rv-edit:focus { height: auto; }
+.linkbtn {
+  border: 0; background: none; color: var(--accent); padding: 0; font-size: 14px;
+  cursor: pointer; flex: none;
+}
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface);
+  border-top: 1px solid var(--border); padding: 10px 16px;
+}
+.bar-in {
+  max-width: 780px; margin: 0 auto; display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap;
+}
+#progress { flex: 1; min-width: 180px; color: var(--muted); font-size: 15px; }
+button {
+  font: inherit; font-size: 15px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--accent);
+}
+button.primary { background: var(--accent); color: var(--surface); font-weight: 600; }
+button.secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+#status { width: 100%; font-size: 15px; }
+#status.ok { color: var(--accent); font-weight: 600; }
+#status.fail { color: var(--missing); }
+[hidden] { display: none !important; }
+
+/* Building blocks for sketches and pictures in a question's free area. */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 620px) { .pair { grid-template-columns: 1fr; } }
+figure { margin: 0; }
+figcaption { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.app { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13px; }
+.app-h {
+  background: var(--app-head); padding: 6px 10px; font-weight: 600; display: flex; gap: 8px;
+  justify-content: space-between; align-items: baseline;
+}
+.app-b { padding: 10px; display: grid; gap: 8px; }
+.field { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+.field > .label { display: block; font-size: 12px; color: var(--muted); }
+.hint { font-size: 12px; color: var(--muted); }
+.tip {
+  display: inline-block; position: relative; background: var(--text); color: var(--bg);
+  border-radius: 6px; padding: 4px 8px; font-size: 12px; max-width: 240px;
+}
+.btn {
+  display: inline-block; border: 1px solid var(--accent); color: var(--accent);
+  border-radius: 6px; padding: 2px 10px; font-size: 12px; white-space: nowrap;
+}
+.infobox {
+  display: flex; gap: 8px; background: var(--info-bg); border: 1px solid var(--info-border);
+  color: var(--info-text); border-radius: 6px; padding: 8px; line-height: 1.4;
+}
+.mono {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12px;
+  border: 1px solid var(--accent); border-radius: 6px; padding: 6px 8px; white-space: pre-wrap;
+}
+.draft {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  font-size: 14px;
+}
+.draft p { margin: 0 0 8px; }
+.draft p:last-child { margin: 0; }
+.mark { background: var(--new-bg); color: var(--text); border-radius: 3px; padding: 0 2px; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.flow.down { flex-direction: column; align-items: flex-start; }
+.box {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+  padding: 6px 10px;
+}
+.box.new { border-color: var(--accent); background: var(--new-bg); }
+.box.gone { border-style: dashed; color: var(--gone); text-decoration: line-through; }
+.arrow {
+  display: inline-flex; flex-direction: column; align-items: center; color: var(--muted);
+  font-size: 11px; line-height: 1.1;
+}
+.arrow::after { content: "→"; font-size: 18px; }
+.flow.down .arrow { flex-direction: row; gap: 6px; padding-left: 12px; }
+.flow.down .arrow::after { content: "↓"; order: -1; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="kicker" id="kicker"></div>
+    <h1 id="title"></h1>
+  </header>
+  <div class="intro" id="intro"></div>
+  <p class="notice" id="from-file" hidden></p>
+
+  <section id="review-sec" hidden>
+    <h2 id="review-title"></h2>
+    <p class="sub" id="review-sub"></p>
+    <div id="review"></div>
+  </section>
+
+  <section id="open-sec" hidden>
+    <h2 id="open-title"></h2>
+    <p class="sub" id="open-sub"></p>
+    <div id="open"></div>
+  </section>
+
+  <section id="confirm-sec" hidden>
+    <h2 id="confirm-title"></h2>
+    <p class="sub" id="confirm-sub"></p>
+    <div id="confirm"></div>
+  </section>
+
+  <section id="collapsed-sec" hidden>
+    <h2 id="collapsed-title"></h2>
+    <p class="sub" id="collapsed-sub"></p>
+    <div id="collapsed"></div>
+  </section>
+
+  <section>
+    <h2 id="free-title"></h2>
+    <textarea id="free"></textarea>
+  </section>
+</main>
+
+<div class="bar">
+  <div class="bar-in">
+    <span id="progress"></span>
+    <button id="copy" class="secondary" type="button"></button>
+    <button id="send" class="primary" type="button"></button>
+    <span id="status" role="status" hidden></span>
+  </div>
+</div>
+
+<script id="page-data" type="application/json">__PAGE_DATA__</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("page-data").textContent);
+const R = DATA.round;
+const L = DATA.labels;
+const PAGE_ID = DATA.page_id;
+const OPEN = R.open || [];
+const CONFIRM = R.confirm || [];
+const COLLAPSED = R.collapsed || [];
+const REVIEW = R.review || [];
+const CHAT = "chat";
+const FROM_FILE = location.protocol === "file:";
+const WAIT_MS = 4 * 3600 * 1000;
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (text) => String(text ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const fmt = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
+
+// A small Markdown renderer for the review page: headings, bullets and numbered items with
+// wrapped lines, code blocks, paragraphs, `code`, **bold** and web links. It escapes first.
+function inline(text) {
+  return esc(text)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function markdown(src) {
+  const out = [];
+  let para = [];
+  let list = null;
+  let fence = null;
+  const flushPara = () => {
+    if (para.length) out.push(`<p>${inline(para.join(" "))}</p>`);
+    para = [];
+  };
+  const flushList = () => {
+    if (list) out.push(`<${list.tag}>${list.items.map((li) => `<li>${inline(li)}</li>`).join("")}</${list.tag}>`);
+    list = null;
+  };
+  for (const line of src.split("\n")) {
+    if (fence !== null) {
+      if (/^\s*```/.test(line)) { out.push(`<pre><code>${esc(fence.join("\n"))}</code></pre>`); fence = null; }
+      else fence.push(line);
+      continue;
+    }
+    const item = line.match(/^\s*(?:([-*])|(\d+)\.)\s+(.*)$/);
+    if (/^\s*```/.test(line)) {
+      flushPara(); flushList(); fence = [];
+    } else if (/^#{1,6} /.test(line)) {
+      flushPara(); flushList();
+      out.push(`<p><b>${inline(line.replace(/^#+ /, ""))}</b></p>`);
+    } else if (item) {
+      flushPara();
+      const tag = item[1] ? "ul" : "ol";
+      if (list && list.tag !== tag) flushList();
+      if (!list) list = { tag, items: [] };
+      list.items.push(item[3]);
+    } else if (/^\s+\S/.test(line) && list) {
+      list.items[list.items.length - 1] += " " + line.trim();
+    } else if (line.trim() === "") {
+      flushPara(); flushList();
+    } else {
+      flushList();
+      para.push(line.trim());
+    }
+  }
+  if (fence !== null) out.push(`<pre><code>${esc(fence.join("\n"))}</code></pre>`);
+  flushPara(); flushList();
+  return out.join("");
+}
+const withoutHeading = (src) => src.replace(/^#{1,6} [^\n]*\n?/, "");
+
+function setText(id, text) { $(id).textContent = text; }
+
+document.documentElement.lang = R.language || "en";
+document.title = R.title;
+setText("#kicker", fmt(typeof R.round === "number" ? L.kicker : L.kicker_review,
+  { step: R.step, change: R.change, round: R.round }));
+setText("#title", R.title);
+$("#intro").innerHTML = R.intro || "";
+setText("#review-title", L.review_title);
+setText("#review-sub", L.review_sub);
+setText("#open-title", L.open_title);
+setText("#open-sub", L.open_sub);
+setText("#confirm-title", L.confirm_title);
+setText("#confirm-sub", L.confirm_sub);
+setText("#collapsed-title", L.collapsed_title);
+setText("#collapsed-sub", L.collapsed_sub);
+setText("#free-title", L.free_title);
+$("#free").placeholder = L.free_placeholder;
+setText("#copy", L.copy);
+setText("#send", L.send);
+$("#review-sec").hidden = REVIEW.length === 0;
+$("#open-sec").hidden = OPEN.length === 0;
+$("#confirm-sec").hidden = CONFIRM.length === 0;
+$("#collapsed-sec").hidden = COLLAPSED.length === 0;
+if (FROM_FILE) {
+  setText("#from-file", L.from_file);
+  $("#from-file").hidden = false;
+  $("#send").hidden = true;
+}
+
+// Review items: a section of the proposal or an entry of the decision log, with an edit button
+// that turns it into its Markdown as it stands in the file.
+let lastGroup = null;
+$("#review").innerHTML = REVIEW.map((it) => {
+  const group = it.group && it.group !== lastGroup
+    ? `<div class="rv-group">${esc(L["group_" + it.group] || it.group)}</div>` : "";
+  lastGroup = it.group || lastGroup;
+  const head = `<span class="rv-title">${inline(it.title)}${it.subtitle ? `<small>${inline(it.subtitle)}</small>` : ""}</span>
+    <button type="button" class="linkbtn" data-edit="${it.id}">${esc(L.edit)}</button>`;
+  const body = `<div class="rv-body">
+      <div class="rv-text" data-view="${it.id}">${markdown(withoutHeading(it.markdown))}</div>
+      <textarea class="rv-edit" data-src="${it.id}" hidden></textarea>
+      <textarea data-note="${it.id}" placeholder="${esc(L.note)}"></textarea>
+    </div>`;
+  return it.folded
+    ? `${group}<details class="rv" data-item="${it.id}"><summary class="rv-head">${head}</summary>${body}</details>`
+    : `${group}<div class="rv" data-item="${it.id}"><div class="rv-head">${head}</div>${body}</div>`;
+}).join("");
+for (const it of REVIEW) $(`[data-src="${it.id}"]`).value = it.markdown;
+document.addEventListener("click", (event) => {
+  const id = event.target.dataset && event.target.dataset.edit;
+  if (!id) return;
+  event.preventDefault();
+  const item = $(`[data-item="${id}"]`);
+  if (item.tagName === "DETAILS") item.open = true;
+  const src = $(`[data-src="${id}"]`);
+  const editing = src.hidden;
+  src.hidden = !editing;
+  const view = $(`[data-view="${id}"]`);
+  view.hidden = editing;
+  if (!editing) view.innerHTML = markdown(withoutHeading(src.value));
+  event.target.textContent = editing ? L.edit_done : L.edit;
+  if (editing) {
+    src.style.height = `${Math.max(160, src.scrollHeight + 4)}px`;
+    src.focus();
+  }
+});
+const edited = (it) => $(`[data-src="${it.id}"]`).value !== it.markdown;
+
+// Open questions: the options with their weakness, the recommendation marked but not selected.
+$("#open").innerHTML = OPEN.map((q, i) => `
+  <section class="card" data-item="${q.id}">
+    <div class="qhead"><span class="num">${i + 1}</span><h3>${esc(q.title)}</h3></div>
+    <p class="ctx">${esc(q.context)}</p>
+    ${q.more ? `<details class="more"><summary>${esc(L.more)}</summary><div class="more-body">${q.more}</div></details>` : ""}
+    ${q.free ? `<div class="qfree">${q.free}</div>` : ""}
+    <div class="opts">
+      ${q.options.map((o) => `
+        <label class="opt">
+          <input type="radio" name="${q.id}" value="${o.id}">
+          <span>
+            <span class="olabel">${esc(o.id.toUpperCase())} · ${esc(o.label)}</span>${o.rec ? `<span class="badge">${esc(L.recommended)}</span>` : ""}
+            <span class="otext">${esc(o.text)}</span>
+            ${o.rec ? `<span class="why"><b>${esc(L.why)}</b> ${esc(o.why)}</span>` : ""}
+            <span class="weak"><b>${esc(L.weak)}</b> ${esc(o.weak)}</span>
+          </span>
+        </label>`).join("")}
+      <label class="opt chat">
+        <input type="radio" name="${q.id}" value="${CHAT}">
+        <span><span class="olabel">${esc(L.rather_chat)}</span>
+          <span class="otext muted">${esc(L.rather_chat_text)}</span></span>
+      </label>
+    </div>
+    <textarea data-note="${q.id}" placeholder="${esc(L.note)}"></textarea>
+  </section>`).join("");
+
+// Points from the chat and collapsed points: kept as their heading says unless changed.
+function points(items, keepLabel, changeLabel, body) {
+  return items.map((it) => `
+    <details class="item" data-item="${it.id}">
+      <summary><span class="stitle">${esc(it.title)}</span><span class="state" data-state="${it.id}">${esc(keepLabel)}</span></summary>
+      <div class="ibody">
+        ${body(it)}
+        <div class="choice">
+          <label><input type="radio" name="${it.id}" value="keep" checked> ${esc(keepLabel)}</label>
+          <label><input type="radio" name="${it.id}" value="change"> ${esc(changeLabel(it))}</label>
+        </div>
+        <textarea data-note="${it.id}" placeholder="${esc(L.what_differs)}"></textarea>
+      </div>
+    </details>`).join("");
+}
+$("#confirm").innerHTML = points(CONFIRM, L.confirm_keep, () => L.confirm_change, (it) => `
+  <p>${esc(it.body)}</p>
+  ${it.weak ? `<p class="weak"><b>${esc(L.weak)}</b> ${esc(it.weak)}</p>` : ""}
+  ${it.rejected ? `<p class="muted"><b>${esc(L.rejected)}</b> ${esc(it.rejected)}</p>` : ""}`);
+$("#collapsed").innerHTML = points(COLLAPSED, L.collapsed_keep,
+  (it) => (it.alt ? fmt(L.collapsed_instead, { alt: it.alt }) : L.collapsed_change), (it) => `
+  <p><b>${esc(L.why)}</b> ${esc(it.why)}</p>`);
+const keepLabel = (it) => (CONFIRM.includes(it) ? L.confirm_keep : L.collapsed_keep);
+
+function chosen(id) {
+  const input = document.querySelector(`input[name="${id}"]:checked`);
+  return input ? input.value : null;
+}
+const note = (id) => $(`[data-note="${id}"]`).value.trim();
+// A point changes when the user picks the other choice or writes a note; the note then says how.
+const changedPoint = (it) => chosen(it.id) === "change" || note(it.id) !== "";
+const tookAlternative = (it) => chosen(it.id) === "change" && note(it.id) === "" && it.alt;
+const touched = (it) => edited(it) || note(it.id) !== "";
+
+function update() {
+  const parts = [];
+  if (OPEN.length) {
+    const done = OPEN.filter((q) => chosen(q.id)).length;
+    parts.push(fmt(L.progress, { done, total: OPEN.length }));
+  }
+  for (const q of OPEN) if (chosen(q.id)) $(`[data-item="${q.id}"]`).classList.remove("missing");
+  for (const it of [...CONFIRM, ...COLLAPSED]) {
+    const state = $(`[data-state="${it.id}"]`);
+    state.classList.toggle("changed", changedPoint(it));
+    state.textContent = changedPoint(it) ? L.changed : keepLabel(it);
+  }
+  for (const it of REVIEW) $(`[data-item="${it.id}"]`).classList.toggle("edited", touched(it));
+  if (REVIEW.length) {
+    const count = REVIEW.filter(touched).length;
+    parts.push(count ? fmt(L.review_touched, { count }) : L.review_untouched);
+  }
+  setText("#progress", parts.join(" · "));
+}
+document.addEventListener("change", update);
+document.addEventListener("input", update);
+update();
+
+// The answers, in the format the page command prints.
+function collect() {
+  const point = (it) => ({ id: it.id, keep: !changedPoint(it), note: note(it.id) });
+  return {
+    page_id: PAGE_ID, step: R.step, change: R.change, round: R.round,
+    open: OPEN.map((q) => ({ id: q.id, choice: chosen(q.id), note: note(q.id) })),
+    confirm: CONFIRM.map(point),
+    collapsed: COLLAPSED.map(point),
+    review: REVIEW.map((it) => ({
+      id: it.id, edited: edited(it),
+      markdown: edited(it) ? $(`[data-src="${it.id}"]`).value : null, note: note(it.id),
+    })),
+    free: $("#free").value.trim(),
+  };
+}
+
+// The answers as text for the chat: every answer and note.
+function asText(answers) {
+  const round = typeof R.round === "number" ? fmt(L.text_round, { round: R.round }) : L.text_review;
+  const lines = [`${R.step} · ${R.change} · ${round}`];
+  const noteLines = (text) => (text ? [`   ${L.text_note} ${text}`] : []);
+  answers.open.forEach((a, i) => {
+    const q = OPEN[i];
+    const option = q.options.find((o) => o.id === a.choice);
+    const answer = a.choice === CHAT ? L.rather_chat
+      : option ? `${option.id.toUpperCase()} · ${option.label}` : L.text_no_answer;
+    lines.push(`${i + 1}. ${q.title} → ${answer}`, ...noteLines(a.note));
+  });
+  const unchanged = [];
+  [...answers.confirm, ...answers.collapsed].forEach((a) => {
+    const it = [...CONFIRM, ...COLLAPSED].find((p) => p.id === a.id);
+    if (a.keep && !a.note) { unchanged.push(a.id); return; }
+    const instead = tookAlternative(it) ? ` · ${fmt(L.collapsed_instead, { alt: it.alt })}` : "";
+    lines.push(`${a.id} ${it.title} → ${a.keep ? keepLabel(it) : L.changed}${instead}`, ...noteLines(a.note));
+  });
+  if (unchanged.length) lines.push(`${L.text_unchanged} ${unchanged.join(", ")}`);
+  answers.review.forEach((a, i) => {
+    if (!a.edited && !a.note) return;
+    lines.push(`${a.id} ${REVIEW[i].title}`, ...noteLines(a.note));
+    if (a.edited) lines.push(`   ${L.text_new}`, ...a.markdown.split("\n").map((line) => `   | ${line}`));
+  });
+  if (REVIEW.length) {
+    const count = answers.review.filter((a) => !a.edited && !a.note).length;
+    lines.push(fmt(L.text_approved, { count, total: REVIEW.length }));
+  }
+  if (answers.free) lines.push(`${L.text_free} ${answers.free}`);
+  return lines.join("\n");
+}
+
+function setStatus(text, kind) {
+  const status = $("#status");
+  status.textContent = text;
+  status.className = kind;
+  status.hidden = false;
+}
+
+$("#copy").addEventListener("click", async () => {
+  const text = asText(collect());
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(L.copied, "ok");
+  } catch {
+    window.prompt(L.copy_prompt, text);
+  }
+});
+
+$("#send").addEventListener("click", async () => {
+  const missing = OPEN.filter((q) => !chosen(q.id));
+  for (const q of missing) $(`[data-item="${q.id}"]`).classList.add("missing");
+  if (missing.length && !window.confirm(fmt(L.missing, { count: missing.length }))) {
+    $(`[data-item="${missing[0].id}"]`).scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  $("#send").disabled = true;
+  try {
+    const response = await fetch("answers", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(collect()),
+    });
+    if (!response.ok) throw new Error(String(response.status));
+  } catch {
+    $("#send").disabled = false;
+    setStatus(L.send_failed, "fail");
+    return;
+  }
+  $("#copy").disabled = true;
+  setStatus(L.sent, "ok");
+  waitForNextRound();
+});
+
+// After sending, ask the program for the next round until it shows here or in another tab.
+// Between rounds no program runs, so failed requests are expected.
+let wake = null;
+document.addEventListener("visibilitychange", () => { if (wake && !document.hidden) wake(); });
+const pause = (ms) => new Promise((resolve) => { wake = resolve; setTimeout(resolve, ms); });
+async function waitForNextRound() {
+  const until = Date.now() + WAIT_MS;
+  while (Date.now() < until) {
+    await pause(1000);
+    try {
+      const response = await fetch(`waiting?page=${encodeURIComponent(PAGE_ID)}`, { cache: "no-store" });
+      if (!response.ok) continue;
+      const { state } = await response.json();
+      if (state === "reload") { location.reload(); return; }
+      if (state === "elsewhere") { setStatus(L.sent_elsewhere, "ok"); return; }
+    } catch {
+      // no program runs right now
+    }
+  }
+}
+history.scrollRestoration = "manual";
+</script>
+</body>
+</html>
