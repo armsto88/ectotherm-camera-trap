@@ -18,7 +18,8 @@ This change defines that trap and what it must achieve, so that its design can f
 animal welfare: fewer wild animals caught and handled in surveys. It is meant for drift fences
 anywhere, and for the ecological consultants and agency staff who run routine surveys. No funding
 application is part of it. The earlier prototype (ESP32 board, OV2640 camera, VL53L0X laser sensor)
-is kept only as a test bench.
+is kept only as a test bench. The first priority is a trap that works on its own as a
+laser-triggered camera trap; a learned image model comes later.
 
 ## What changes
 - The trap is a short passage set into the line of a drift fence. Animals cross the fence through it
@@ -28,27 +29,35 @@ is kept only as a test bench.
   start the camera. Whether a laser looking down from the roof is added is decided by a bench test.
 - It notices animals from about 3 cm body length without tail, by day and by night, and records the
   time and direction of each pass.
-- It photographs each pass the same way every time, from above and lit by its own infrared light by
-  day and by night, sharp enough to identify the animal to species wherever an expert could do so
-  from a photo, and otherwise to the nearest group. Whether a side view is added, and whether colour
-  is added by daylight let in through the top or by a short white light as the animal leaves, is
-  decided in the controlled tests. Once a day it also photographs its empty view, so a dirty lens or
-  a blocked passage shows up in the records.
+- It photographs each pass the same way every time, from above, with a fixed-focus camera and its
+  own infrared light by day and by night, sharp enough to identify the animal to species wherever an
+  expert could do so from a photo, and otherwise to the nearest group. The light is 940 nm infrared
+  unless the bench shows that 850 nm gives better pictures without disturbing the animals. Whether a
+  side view is added, and whether colour is added by daylight let in through the top or by a short
+  white light as the animal leaves, is decided in the controlled tests. Once a day it also
+  photographs its empty view, so a dirty lens or a blocked passage shows up in the records.
 - It replaces the bucket for species lists, presence of a species, times of activity, and relative
   numbers: passes per fence per night, an index rather than a population size. Buckets stay for
   studies of population size, sex ratio or condition.
-- A simple filter on the trap drops obviously empty pictures. After collection, an image-recognition
-  model removes empty pictures and sorts the rest into broad groups; people name the species and
-  check the sorting. Small mammals and large invertebrates are recorded, but the trap is not
-  designed for them.
+- A simple filter on the trap drops obviously empty pictures. After collection, the computer marks
+  pictures that look like the day's empty view, and people sort the rest into broad groups (frog,
+  toad, newt, lizard, snake, turtle, other), adding the species name where the picture allows. Their
+  names are kept as labels from which a model can learn later. Small mammals and large invertebrates
+  are recorded, but the trap is not designed for them, nor for large turtles.
+- The trap has no learned image model in this version, but its own camera chip can run a small one
+  after each pass, so a later model that sorts pictures by type of animal needs no new hardware.
 - The trap runs a whole season, three to six months, without a visit, and needs no connection. Once
   a day it writes a short state summary to its memory card: battery, free storage, passes since the
-  last summary, and whether its view is clear, in the format FieldMesh takes.
+  last summary, and whether its view is clear, in the format FieldMesh takes. Its coordinates are
+  entered in its settings on the card when it is set up, so its records carry their place.
+- Every chip on the trap's boards is one that JLCPCB can assemble, from LCSC's stock where it has
+  it; plug-in parts such as the camera module may come from anywhere.
 - Results report three things separately: whether the trigger fired, whether a usable picture was
-  taken, and whether the animal was identified. Missed animals are counted in two stages: controlled
-  tests with model animals and known animals, then a short field phase with a bucket behind the trap
-  at a few fences. The filter deletes nothing in either stage. The targets for "the trap works" are
-  set from the controlled tests and fixed before the field phase.
+  taken, and whether the animal was identified. A picture is usable when a person sorting it could
+  give it a group or a name. Missed animals are counted in two stages: controlled tests with model
+  animals and known animals, then a short field phase with a bucket behind the trap at a few fences.
+  The filter deletes nothing in either stage. The targets for "the trap works" are set from the
+  controlled tests and fixed before the field phase.
 - Field tests run where the project team is based and, with a partner, elsewhere, to cover different
   animals, climates and fence types.
 
@@ -62,8 +71,8 @@ New:
   picture of the empty view.
 - pass-records: what each pass leaves behind (time, direction, pictures, which sensing noticed it)
   and the relative numbers drawn from them.
-- picture-sorting: the filter on the trap, the model that sorts the pictures afterwards, and people
-  naming the species.
+- picture-sorting: the filter on the trap, marking empty pictures after collection, and people
+  sorting the pictures into groups and naming the species.
 - unattended-season: running a whole season without a visit, with a daily state summary on the
   memory card.
 - trap-evaluation: how trigger, picture and identification success are measured, how missed animals
@@ -80,7 +89,10 @@ New:
   rain and debris set them off? (entries 24 and 34)
 - Do animals enter the passage readily, or do its shape and floor make some species turn back?
   (entry 27)
-- Does the infrared light change the animals' behaviour? (entries 19 and 38)
+- Does the infrared light change the animals' behaviour, and do they notice the faint glow of
+  850 nm? (entries 19, 38 and 77)
+- How high must the camera sit for the tallest target animals to stay sharp, and do fast animals
+  come out slanted in pictures read line by line? (entry 76)
 - Can a season without visits be powered with the trap's own lighting, two kinds of sensing and a
   filter on the trap, at a cost consultants will pay? (entries 4, 19, 23, 25, 33 and 38)
 - Do the pictures from above reach the identification level of entry 18 for the main groups of
@@ -88,17 +100,20 @@ New:
 - Is colour needed to tell species apart? If so, does daylight let in through the top make the
   passage too warm or keep basking animals inside, and does a short white light make animals turn
   back or hurry? (entry 38)
-- Will people's labels and the bucket phase give enough labelled pictures to train the sorting
-  model? (entry 22)
+- Will people's labels and the bucket phase give enough labelled pictures to train a later model?
+  (entry 75)
 - What are the targets for "the trap works"? Set after the controlled tests. (entry 36)
 
 ## Out of scope
 - A funding application; it becomes its own piece of work if funding is sought (entry 32).
 - Studies of population size, sex ratio or condition; buckets stay for these (entry 16).
 - Juveniles below about 3 cm, such as frogs and toads just out of the water (entry 24).
-- Small mammals and invertebrates as design targets (entry 26).
-- Species-level recognition by the model; a later change, once enough labelled pictures exist (entry
-  22).
+- Small mammals, invertebrates and large turtles as design targets (entries 26 and 78).
+- Learned image models, on a computer or on the trap, and a FieldMesh interface to validate data,
+  train models and upload them to devices; a later change,
+  [armsto88/fieldMesh#97](https://github.com/armsto88/fieldMesh/issues/97) (entry 75).
+- A separate chip for image models; only with a later board revision, if a test shows the trap's
+  camera chip is not enough (entry 74).
 - Parts, code and housing; they follow in the design step (propose) and the build (implement) (entry
   7).
 - Feeding FieldMesh from the trap on its own, with its own uplink and no hub on the site; a later
@@ -122,6 +137,11 @@ New:
   Rhineland-Palatinate](https://www.zobodat.at/pdf/Fauna-Flora-Rheinland-Pfalz_11_0191-0205.pdf)
 - [Sand lizard relocations with fences and buckets,
   Berlin](https://www.lacerta.de/AF/Bibliografie/BIB_18247.pdf)
+- [Gardiner et al. 2024, ultra-light image models as on-device triggers for insect camera traps,
+  run on an ESP32-S3](https://arxiv.org/html/2411.14467v2)
+- [Islam et al. 2023, sorting snakes, lizards and toads in camera-trap
+  pictures](https://www.mdpi.com/2076-2615/13/9/1526)
 - [Wild Animal Initiative grants, for when funding is
   sought](https://www.wildanimalinitiative.org/grants)
-- The earlier prototype: `README.md`, `Dev-BLOG.md` and `code.ino` in this repository.
+- The earlier prototype: `prototype/README.md`, `prototype/Dev-BLOG.md` and `prototype/code.ino` in
+  this repository.

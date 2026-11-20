@@ -807,3 +807,143 @@
   be matched.
 - **Rejected:** Also requiring the direction toward the bucket (needs the bucket's side recorded in
   `season.cfg`).
+
+## 72. Where do the trap's parts come from?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Every chip on the trap's own boards comes from LCSC, so that JLCPCB can assemble the
+  boards; plug-in parts such as the camera module may come from elsewhere.
+- **Reason:** The user's boards are drawn in EasyEDA and made at JLCPCB, which assembles from
+  LCSC's stock. LCSC carries no ready OV5640 module with lens and cable, only the bare sensor, so a
+  rule covering the camera too would mean a 2 or 3 megapixel camera.
+- **Rejected:** Everything from LCSC, camera included (only 2 or 3 megapixel camera boards; a 3 cm
+  animal would be about 180 instead of about 300 pixels long).
+
+## 73. Where may the trap's chips come from?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Every chip on the trap's own boards must be one JLCPCB can assemble: from LCSC's
+  stock where it has it, otherwise ordered in through JLCPCB's global sourcing from suppliers such
+  as DigiKey and Mouser. Plug-in parts such as the camera module may come from anywhere.
+- **Reason:** The user pointed out that JLCPCB orders in parts LCSC lacks. LCSC stock stays the
+  first choice, since parts ordered in add about two to four weeks, cannot be returned once ordered
+  and some carry customs fees of 3 to 30%.
+- **Rejected:** LCSC's stock only (rules out most chips that run image models, which LCSC lacks or
+  holds only a few of).
+- **Replaces:** 72, in that chips may also be ordered in through JLCPCB.
+
+## 74. What must the camera controller allow for a vision model later?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** The ESP32-S3 stays the camera controller and is enough: a vision model would run on
+  it after the pictures of a pass are taken. A separate chip for models comes only with a later
+  board revision, and only if a test shows the ESP32-S3 is not enough.
+- **Reason:** The user wants a vision model that sorts pictures on the trap. The decision is not
+  timing-critical, since the model can judge the pictures after they are taken, in a second or two
+  per pass. The ESP32-S3 runs small image models in about 0.1 to 0.2 s per picture and, with its
+  extra memory, can run larger ones slowly; at about 200 passes a day the model's energy is roughly
+  2 mAh a day against about 30 mAh for the rest (estimates). The v1 boards will be revised after the
+  bench tests anyway.
+- **Rejected:** The ESP32-S3 with a free slot for a helper chip (designed for a chip not yet
+  known); a helper chip such as the MAX78000 (far less energy and faster, but holds only small
+  models, needs its own tools and its long-term supply is uncertain; its strengths do not matter
+  when timing does not); switching to a vision chip such as the STM32N6 now (scarce, costly, new
+  tools before the trap has taken a picture).
+
+## 75. Does this change include a learned image model?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** No. Version 1 sorts pictures without a learned model: the trap's cautious filter,
+  the computer marking pictures that look like the day's empty view, and people sorting and naming
+  the rest, whose names are kept as labels for training later. A learned model, run on the trap
+  after each pass, is a later change.
+- **Reason:** The user's first priority is a trap that works on its own as a laser-triggered camera
+  trap; a model on a computer is not their concern now. No model can be trained before people have
+  named a season or so of pictures, so version 1 loses nothing and is finished sooner.
+- **Rejected:** A model on the computer in this change (its tools could not be used before the first
+  season is named); a model on the computer and on the trap in this change (version 1 would wait
+  for a season of named pictures and a checked model).
+- **Replaces:** 17, 22, 63 and 69, and 23 as far as a full model on a computer goes.
+
+## 76. Does the camera focus itself?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** No. The camera has fixed focus, with a lens whose focal length is chosen for the
+  passage and the camera's height, focused once at the trap and fixed in place. The camera's height
+  and the module are settled in propose and on the bench.
+- **Reason:** The distance to the floor never changes. With the view just covering the passage, a
+  5 megapixel camera gives about 10 pixels per millimetre, and at f/2 the depth of field reaches
+  about 3 cm above the floor with the camera at 20 cm, about 4 cm at 25 cm and about 4.5 cm at 30 cm
+  (estimates). No moving parts in a damp hood and no focusing delay. The accepted cost: animals
+  taller than that are slightly soft on top.
+- **Rejected:** Autofocus (a delay on every picture, a small motor in the damp, mixed reports with
+  the ESP32, and in dim infrared light it may focus on the floor instead of the animal).
+
+## 77. Which infrared light lights the pictures?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Decided on the bench, with 940 nm as the default: the board takes infrared LEDs of
+  either 940 or 850 nm in the same place, and the controlled tests compare picture quality and power
+  and watch whether animals react to the faint glow of 850 nm.
+- **Reason:** Ordinary sensors such as the OV5640 are far less sensitive at 940 nm; 850 nm likely
+  gives two to three times the picture for the same light (estimate), but whether reptiles and
+  amphibians notice its glow at a few centimetres in a dark passage is unknown. The user accepts
+  the extra power of 940 nm: if the trap needs more, it gets larger batteries.
+- **Rejected:** Staying with 940 nm without testing 850 nm (stronger LEDs and more power per picture
+  for an untested gain); switching to 850 nm now (its effect on the animals is untested).
+- **Replaces:** 45, in that 850 nm is tested on the bench instead of ruled out.
+
+## 78. Do turtles count as a group of their own?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Yes. Turtle becomes a broad group beside frog, toad, newt, lizard, snake and other;
+  the trap is not sized for large turtles, so only small ones pass.
+- **Reason:** The user named turtles among the animals to tell apart. Small turtles get counted and
+  named like every other animal at no cost; large turtles are usually surveyed by other methods. The
+  accepted cost: shells taller than the depth of field are slightly soft on top.
+- **Rejected:** Turtles as a design target (a passage of 20 cm or more and a higher camera: a bigger
+  bucket, longer beams and less detail on the small animals the trap is mainly for); turtles under
+  "other" (they could not be counted apart).
+- **Replaces:** 22, in its list of broad groups.
+
+## 79. When does a pass count as having a usable picture, and as identified?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** A pass has a usable picture when a person sorting the pictures gave any of its
+  pictures a group or a name; marking a picture "can't tell" or "empty" does not count. A pass is
+  identified when the name given matches the animal the test plan or the bucket check names.
+- **Reason:** The evaluation reports the share of animals with a usable picture, but the specs did
+  not say who judges it. A usable picture is one from which a person can tell at least the group,
+  which is what entry 18 asks of a picture, and it costs no extra click. The accepted cost: a test
+  run must be sorted in full before it is evaluated.
+- **Rejected:** A separate "good enough" mark on each picture (one more click that mostly repeats
+  choosing the group); every picture not marked empty counting as usable (blurred pictures would
+  count, which flatters the trap).
+
+## 80. How does a picture get its broad group?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** The person sorting picks the group of each picture that shows an animal, and adds
+  the species name where the picture allows. Bucket animals take their group from the bucket check
+  sheet.
+- **Reason:** Counts per survey day, matching bucket animals and a later model all work with
+  groups, and without a model no group is guessed in advance. One click gives every animal a group,
+  even when its species cannot be named.
+- **Rejected:** A list that gives each species name its group (every new species needs an entry
+  first; one more file to keep right).
+- **Replaces:** 68, in that there is no model's group to keep beside a person's group.
+
+## 81. Where do a trap's coordinates come from?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** From the trap's settings file on its card: its latitude and longitude are entered
+  in `trap.cfg` when the trap is set up, and the trap keeps them with its records.
+- **Reason:** The Camtrap DP export requires the coordinates of every trap site, and the trap does
+  not know where it stands. With the coordinates on the card they travel with the trap's records,
+  and the daily summary can carry them as the FieldMesh readings table has fields for them. The
+  accepted costs: the coordinates must be known before the card goes into the trap, and the trap's
+  settings reader, which rejects keys it does not know, must learn them.
+- **Rejected:** A settings file for the season on the computer, beside the card copy (no firmware
+  change, but the coordinates live apart from the trap's records); typing them in at each export
+  (typed again every time, easy to get wrong).
+- **Replaces:** 67, in that the season folder holds no `season.cfg`.
