@@ -947,3 +947,35 @@
   change, but the coordinates live apart from the trap's records); typing them in at each export
   (typed again every time, easy to get wrong).
 - **Replaces:** 67, in that the season folder holds no `season.cfg`.
+
+## 82. Do people sort a pass at once, or each picture on its own?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** A pass at once: the review page shows a pass's pictures side by side, the person
+  picks the group and adds the name once, and both are stored for every picture of the pass. A
+  single picture can still be marked empty or "can't tell", and a pass with two different animals
+  can be labelled picture by picture.
+- **Reason:** A pass has up to six pictures, about three on average; labelling once saves about two
+  thirds of the clicks, and every picture still carries the label a later model learns from.
+- **Rejected:** Each picture on its own (about three times the clicks, mostly repeating the same
+  answer).
+
+## 83. What do the daily summary and the export do with the trap's coordinates?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** The daily summary carries the latitude and longitude from the trap's settings in
+  FieldMesh's fields for them, empty when not set. A trap without coordinates still runs; only the
+  export of its season stops and says what is missing.
+- **Reason:** FieldMesh readings have latitude and longitude fields, so the summary can place the
+  trap without a change to FieldMesh; Camtrap DP requires the coordinates, but missing ones must not
+  stop a trap from recording.
+- **Rejected:** Leaving the coordinates out of the summary (FieldMesh would not know where the trap
+  stands); a trap that refuses to start without coordinates (a forgotten entry would cost a season).
+
+## 84. Is "can't tell" kept as a label?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Yes. A picture a person marks "can't tell" is stored as reviewed without a group.
+- **Reason:** A test run must be sorted in full before it is evaluated (entry 79); without this
+  mark, a picture nobody looked at and one nobody could tell look the same.
+- **Rejected:** Not storing it (an unfinished run cannot be told from a finished one).

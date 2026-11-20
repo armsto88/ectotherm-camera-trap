@@ -69,8 +69,8 @@ New:
   relying on body heat, and the direction of the pass.
 - pass-pictures: identifiable pictures of each pass, taken the same way every time, and a daily
   picture of the empty view.
-- pass-records: what each pass leaves behind (time, direction, pictures, which sensing noticed it)
-  and the relative numbers drawn from them.
+- pass-records: what each pass leaves behind (time, direction, pictures, which sensing noticed it),
+  the relative numbers drawn from them, and the trap's place they carry.
 - picture-sorting: the filter on the trap, marking empty pictures after collection, and people
   sorting the pictures into groups and naming the species.
 - unattended-season: running a whole season without a visit, with a daily state summary on the

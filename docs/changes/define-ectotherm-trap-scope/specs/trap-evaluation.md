@@ -14,6 +14,10 @@ of the animals it misses and not on numbers of pictures.
   behind the trap.
 - **Missed animal:** an animal that reached the bucket behind the trap without a matching pass with
   a usable picture.
+- **Usable picture:** a picture to which a person sorting the pictures gave a group or a name; a
+  picture marked empty or "can't tell" is not usable.
+- **Identified:** a pass whose name, given by a person, matches the animal the test plan or the
+  bucket check names.
 
 ## ADDED Requirements
 

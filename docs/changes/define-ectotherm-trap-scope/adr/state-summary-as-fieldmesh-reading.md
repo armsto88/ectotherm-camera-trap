@@ -17,7 +17,8 @@ Version 1 has no radio, but a later change is to let the trap feed the FieldMesh
 ## Decision
 Once a day the trap appends one reading to `state/summaries.jsonl`: `datetime`, `nodeId` (the trap
 number), `seqNum`, `sensorPresent`, `qualityFlags`, `configVersion`, `batVoltage` and `airTemp`,
-plus `trapPasses`, `trapFreeMB` and `trapViewClear`. Bit 0 of `qualityFlags` marks an unclear view.
+`latitude` and `longitude` from the trap's settings (null when not set), plus `trapPasses`,
+`trapFreeMB` and `trapViewClear`. Bit 0 of `qualityFlags` marks an unclear view.
 
 ## Consequences
 - The summary is valid against today's FieldMesh contract; the uplink of issue #1 can send it as is.

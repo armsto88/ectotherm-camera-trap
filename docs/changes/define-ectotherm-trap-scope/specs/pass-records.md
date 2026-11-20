@@ -2,8 +2,8 @@
 
 ## Purpose
 Each pass leaves a record of when it happened, which way the animal went, what noticed it and its
-pictures, so that species lists, presence, times of activity and relative numbers can be drawn from
-a season's records.
+pictures, and a season's records carry the trap's place, so that species lists, presence, times of
+activity and relative numbers can be drawn from them and shared.
 
 ## Terms
 - **Pass record:** the record one pass leaves behind.
@@ -51,3 +51,18 @@ species where pictures have been named, and shall call them passes, never animal
 - **When** the passes are summarised
 - **Then** the summary gives the passes per survey day for each group or species and direction
 - **And** it labels them as passes, not as numbers of animals
+
+### Requirement: Records carry the trap's place
+The trap's coordinates shall be entered in its settings on its card when it is set up, and a
+season exported from the card shall carry them; a season whose card holds no coordinates shall not
+be exported.
+
+#### Scenario: A season is exported with its place <!-- id: f746b277 -->
+- **Given** a trap whose settings hold its latitude and longitude
+- **When** its season is exported
+- **Then** the export places the trap at those coordinates
+
+#### Scenario: A season without coordinates is not exported <!-- id: 2f5cb71e -->
+- **Given** a trap whose settings hold no coordinates
+- **When** its season is exported
+- **Then** the export stops and says that the coordinates are missing

@@ -37,19 +37,29 @@ test carrying `# spec: <id>`.
   - `5c654b74` An obviously empty picture is dropped
   - `3007f937` An unsure picture is kept
   - `f4c14891` The filter marks a picture in pilot mode
+- [ ] 2.5 Add the trap's coordinates to `records`: `latitude` and `longitude` in `TrapConfig` (not
+  set by default), read by `parse_config` and rejected out of range, and written by `summary_json`
+  in FieldMesh's fields for them, null when not set (changes what 2.3 built).
+  Tests:
+  - `94733795` FieldMesh accepts the summary
+  Done when: unit tests show coordinates read from `trap.cfg`, a latitude of 91 rejected, and a
+  summary with and without coordinates both valid against the FieldMesh contract.
 
 ## 3. Hardware
 - [ ] 3.1 Write the insert script in `hardware/insert/`: a passage 15 cm wide across a bucket of
   about 30 cm diameter, the floor flush with the ground at both ends, beam walls with beam holes at
-  4, 12 and 25 mm at a point about 2 cm inside each end, the camera mount about 20 cm above the
-  floor, a mount for a roof laser, a slot for a side view, and bays for the boards and cells.
+  4, 12 and 25 mm at a point about 2 cm inside each end, a camera mount that can be set between
+  about 20 and 30 cm above the floor, a mount for a roof laser, a slot for a side view, and bays for
+  the boards and cells.
   Done when: `freecadcmd` generates the STL files for two bucket sizes, and a printed insert fits a
   20 litre bucket with the fence ends meeting its openings.
 - [ ] 3.2 Draw and build the boards in EasyEDA: one beam board per wall (three 940 nm laser diodes
-  or three photodiodes) and the main board (ATtiny3216, ESP32-S3 module, OV5640 connector, 940 nm
-  LEDs and driver, PIR sensor, DS3231 clock, microSD slot, the FieldHub's CN3791 charger with a
-  thermistor that stops charging below 0 °C, and a holder for two 18650 cells); keep the exports in
-  `hardware/boards/` with a bring-up checklist.
+  or three photodiodes) and the main board (ATtiny3216, ESP32-S3 module, a 24-pin camera connector
+  and an SPI camera header so that either kind of camera module plugs in, infrared LEDs and driver
+  with one footprint for 940 nm or 850 nm LEDs, PIR sensor, DS3231 clock, microSD slot, the
+  FieldHub's CN3791 charger with a thermistor that stops charging below 0 °C, and a holder for two
+  18650 cells); every chip one JLCPCB can assemble, from LCSC's stock where it has it; keep the
+  exports in `hardware/boards/` with a bring-up checklist.
   Done when: the boards are assembled and every part answers on the bring-up checklist.
 - [ ] 3.3 Build the model-animal rig in `bench/rig/`: a belt that pulls model animals along the
   passage floor at the speeds of a `plan.csv`, a light box for darkness and daylight, a
@@ -64,17 +74,19 @@ test carrying `# spec: <id>`.
   Done when: a hand breaking a beam wakes the camera controller, and the crossing it reads back has
   the right point and heights.
 - [ ] 4.2 Write the pass capture in `firmware/camera/`: wake, read crossings and status, map the
-  watcher clock onto the clock chip, build passes, take the picture burst with the 940 nm flash and
-  fixed exposure, apply the filter, write pictures and pass records, and read `trap.cfg`, including
-  pilot mode.
+  watcher clock onto the clock chip, build passes, take the picture burst with the infrared flash
+  and fixed exposure, apply the filter, write pictures and pass records, and read `trap.cfg`,
+  including pilot mode and the coordinates.
   Done when: an object passed through by hand leaves a row in the survey day's pass file and its
   pictures on the card.
 - [ ] 4.3 Write the daily jobs: the empty-view picture, taken once the passage is empty, the state
-  summary, and the fault log for blocked beams, low battery, low storage and camera failures.
+  summary with the coordinates from `trap.cfg`, and the fault log for blocked beams, low battery,
+  low storage and camera failures.
   Tests:
   - `5bcc1dab` The daily picture is taken
   - `cc78920a` An animal is in the passage at the time of the daily picture
   - `e2024b9a` The daily summary is written
+  - `c7f873a0` A trap set up without coordinates
   - `5ac27b8b` A fault is recorded
 
 ## 5. Bench checks and bench runs
@@ -107,46 +119,69 @@ test carrying `# spec: <id>`.
 - [ ] 5.5 Test the roof laser against blocked beams and power use (entry 35).
   Done when: the results are in `docs/testing/bench-results.md` and keeping or dropping the roof
   laser is logged in `decisions.md`.
-- [ ] 5.6 Test a side view and colour with known animals (entries 37 and 38): identification from
-  above alone, with a mirror and with a second camera; how warm the passage gets with daylight
-  through the top; and whether a short white light makes animals turn back or hurry.
+- [ ] 5.6 Test a side view, colour and the infrared wavelength with known animals (entries 37, 38
+  and 77): identification from above alone, with a mirror and with a second camera; how warm the
+  passage gets with daylight through the top; whether a short white light makes animals turn back
+  or hurry; and 940 against 850 nm LEDs for picture quality, power and whether animals react to the
+  faint glow of 850 nm.
   Done when: the results are in `docs/testing/bench-results.md` and the choices are logged in
   `decisions.md`.
 - [ ] 5.7 Measure power use and picture sizes and replace the design's estimates.
   Done when: measured currents, energy per pass and picture sizes are in
-  `docs/testing/bench-results.md`, and a season budget larger than the pack and panel is raised
-  for discuss.
+  `docs/testing/bench-results.md`, and the pack is sized to the measured season budget, larger
+  than two 18650 cells if needed (entry 77).
 - [ ] 5.8 Run a trap for four weeks at the expected load with no connection, and extrapolate its
   charge use to six months; the field phase confirms it.
   Tests:
   - `d6bcd7cb` Six months at the expected load
   - `40ee900d` A trap where there is no coverage
+- [ ] 5.9 Choose the camera module, its lens and the camera's height (entry 76): compare a module
+  with a ribbon cable and one with a screw-in M12 lens, at about 20, 25 and 30 cm above the floor,
+  with model animals of different heights, by darkness and by day, focusing each lens once and
+  fixing it.
+  Done when: sharpness at the floor and on the tallest model animal, pixels per millimetre and the
+  light needed are in `docs/testing/bench-results.md` for each setup, and the choice is logged in
+  `decisions.md`.
 
 ## 6. Sorting tool
 - [x] 6.1 Build the `trapsort` package with its types in `model.py`, `read_card` and the command
   `trapsort import`.
   Done when: it reads the card copy of a bench run, and raises `CardError` on a malformed pass file.
-- [ ] 6.2 Build `mark_empty`, `sort_groups`, `train_group_model` and the commands `trapsort sort`
-  and `trapsort train`.
+- [ ] 6.2 Build `mark_empty` and the command `trapsort sort`, which marks the pictures that look
+  like their survey day's empty view and writes `sorting.csv`.
   Tests:
-  - `46091a85` A season's pictures are sorted
-- [ ] 6.3 Build `LabelStore`, `serve_review` and the import of bucket identifications as labels.
+  - `6e42dbca` Pictures like the empty view are marked
+- [ ] 6.3 Build `LabelStore`, `serve_review` and the import of bucket identifications with their
+  groups as labels. The review page shows each pass with a picture not marked empty, its pictures
+  side by side, with buttons for the broad groups (frog, toad, newt, lizard, snake, turtle, other),
+  a field for the species name, "Empty" and "Can't tell" under each picture, and a switch to label
+  the pictures one by one.
   Tests:
-  - `e9570a6f` A person names a species
-  - `bf27198f` A person corrects the model
+  - `016374dd` A person sorts and names a pass
+  - `f93d49ef` A person can't tell
+  - `2cde2e6f` A person corrects an empty mark
+  - `251da24f` A pass with two different animals
   - `2a1668f9` A bucket animal labels its pictures
 - [ ] 6.4 Build `passes_per_survey_day` and `export_camtrap_dp`, with the commands `trapsort
-  summarise` and `trapsort export`.
+  summarise` and `trapsort export`; the export places the deployment at the coordinates in the
+  card's `trap.cfg` and stops without them.
   Tests:
   - `0930417b` A season is summarised
+  - `f746b277` A season is exported with its place
+  - `2f5cb71e` A season without coordinates is not exported
   Done when: an exported package passes the Camtrap DP validation.
 - [ ] 6.5 Change `trapsort import` to check a card and copy it into a season folder's `card/` with
-  `import_card`, and add `read_season` and `write_sorting` (changes what 6.1 built).
+  `import_card`; add `read_season` and `write_sorting` for the empty marks; and move `Group` into
+  `model.py` with turtle added, dropping `LabelledPicture` and `GroupModel` (changes what 6.1
+  built).
   Done when: an imported card equals the original, a second import into the same season is
   refused, and `read_season` reads back what `write_sorting` wrote.
 
 ## 7. Evaluation
-- [ ] 7.1 Build `read_plan`, `read_bucket_checks`, `evaluate` and the command `trapsort evaluate`.
+- [ ] 7.1 Build `read_plan`, `read_bucket_checks`, `evaluate` and the command `trapsort evaluate`,
+  counting a pass as having a usable picture when a person gave any of its pictures a group or a
+  name, and as identified when that name matches the animal the reference names; a run with
+  pictures nobody has looked at is reported as not fully sorted.
   Tests:
   - `36e16dab` Results of a test run
   - `fb3c43de` An animal in the bucket without a matching picture
@@ -175,3 +210,7 @@ test carrying `# spec: <id>`.
 - 2026-11-20: 6.1 was checked against a card copy written by the tests in the format the
   firmware writes; the card of a real bench run follows with 5.2.
 - 2026-11-20: 6.5 is built right after 6.1, since 6.2 to 6.4 take the season folder it brings.
+- 2026-11-20: The change went back through discuss and propose (entries 72 to 84): no learned model
+  in this change, turtle as a group, passes sorted at once, coordinates in `trap.cfg`. Tasks 2.5 and
+  6.5 change code already built; 6.2 to 6.4, 3.1, 3.2, 4.2, 4.3, 5.6, 5.7 and 7.1 were rewritten
+  before being built, and 5.9 is new.

@@ -33,19 +33,27 @@ The trap shall do everything without any connection.
 
 ### Requirement: Daily state summary
 Once a day the trap shall write a state summary to its memory card with its battery level, free
-storage, the number of passes since the last summary, and whether the daily picture showed a clear
-view, in the format the FieldMesh system takes, so that a later uplink can send it unchanged.
+storage, the number of passes since the last summary, whether the daily picture showed a clear
+view, and the coordinates from its settings, in the format the FieldMesh system takes, so that a
+later uplink can send it unchanged.
 
 #### Scenario: The daily summary is written <!-- id: e2024b9a -->
 - **Given** the trap is running
 - **When** the time of the daily summary comes
 - **Then** it writes a state summary with its battery level, free storage, the number of passes
   since the last summary, and whether its view is clear
+- **And** the summary gives the coordinates from the trap's settings
 
 #### Scenario: A day without passes <!-- id: 45e3bf6c -->
 - **Given** no animal has passed since the last summary
 - **When** the time of the daily summary comes
 - **Then** it writes a state summary that gives zero passes
+
+#### Scenario: A trap set up without coordinates <!-- id: c7f873a0 -->
+- **Given** the trap's settings hold no coordinates
+- **When** the time of the daily summary comes
+- **Then** it writes a state summary that leaves the coordinates empty
+- **And** the trap keeps noticing, photographing and recording passes
 
 #### Scenario: FieldMesh accepts the summary <!-- id: 94733795 -->
 - **Given** a state summary written by the trap

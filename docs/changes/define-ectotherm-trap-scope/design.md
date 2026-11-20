@@ -36,15 +36,36 @@ Rejected: the ESP32-S3's co-processor alone (limited; watching may pause); the p
 (test bench only, entry 5).
 
 ### Camera, light and pictures
-An OV5640 module without an infrared-cut filter, with a fixed-focus lens of about 75 degrees set to
-the floor about 20 cm below, gives an estimated 8 to 10 pixels per millimetre across the 15 by 26 cm
-floor. Every picture is lit by 940 nm LEDs flashed with the exposure, with fixed exposure settings,
-so pictures do not depend on daylight and no visible light is used. A pass gets a picture as soon
-as the camera is ready, then one every half second while the animal is in the passage, at most six.
-If the bench shows the camera wakes too slowly, it stays on standby instead. Entries 38, 44, 45, 57
-and 58.
-Rejected: the OV2640 (two megapixels, weak in low light); 850 nm light (faint red glow); white
-light (startles animals); one picture per pass.
+A 5 megapixel camera module without an infrared-cut filter, an OV5640, with a fixed-focus lens
+whose focal length is chosen for the camera's height so that the view just covers the 15 by 26 cm
+floor at about 10 pixels per millimetre; the lens is focused once at the trap and fixed. The
+camera's height, between about 20 and 30 cm, and the module, one with a ribbon cable or one with a
+screw-in M12 lens, are settled on the bench by depth of field and light: at f/2 the sharp zone
+reaches about 3 cm above the floor at 20 cm and about 4.5 cm at 30 cm (estimates). Every picture is
+lit by infrared LEDs flashed with the exposure, with fixed exposure settings, so pictures do not
+depend on daylight and no visible light is used. The board takes 940 nm or 850 nm LEDs in the same
+place; 940 nm is the default, and the bench decides. A pass gets a picture as soon as the camera is
+ready, then one every half second while the animal is in the passage, at most six. If the bench
+shows the camera wakes too slowly, it stays on standby instead. Entries 38, 44, 57, 58, 76 and 77.
+Rejected: the OV2640 (two megapixels, weak in low light); autofocus (a delay on every picture, a
+motor in the damp, unreliable in infrared light); white light (startles animals); one picture per
+pass.
+
+### Image models later run on the camera controller
+Version 1 has no learned image model. A later one, sorting a pass's pictures by type of animal,
+runs on the ESP32-S3 after the pictures are taken, which is not timing-critical: small models take
+about 0.1 to 0.2 s per picture there. A separate chip for models comes only with a later board
+revision, and only if a test shows the ESP32-S3 is not enough. Entries 74 and 75;
+[ADR](adr/image-models-on-the-camera-controller.md).
+Rejected: a free slot for a helper chip (designed for a chip not yet known); a helper such as the
+MAX78000 (holds only small models, its own tools, uncertain supply); a vision chip such as the
+STM32N6 (scarce, costly, new tools).
+
+### Chips JLCPCB can assemble
+Every chip on the trap's boards is one JLCPCB can assemble: from LCSC's stock where it has it,
+otherwise ordered in through JLCPCB's global sourcing. Plug-in parts such as the camera module and
+the cells may come from anywhere. Entries 72 and 73; [ADR](adr/chips-assembled-by-jlcpcb.md).
+Rejected: LCSC's stock only (rules out most chips for image models; thin stock of some parts).
 
 ### What the bench decides
 The roof laser (entry 35), a side view by mirror or second camera (entry 37) and colour by daylight
@@ -63,22 +84,27 @@ lasers saw).
 ### Records on the card, exported as Camtrap DP
 One CSV file of pass records per survey day, the JPEG pictures in a folder per survey day, a fault
 log and the daily state summaries, all on the memory card; times in UTC, survey days from the
-trap's configured UTC offset. The sorting tool exports a season as a Camera Trap Data Package.
-Entry 48; [ADR](adr/records-as-csv-and-camtrap-dp.md).
-Rejected: only the trap's own format.
+trap's configured UTC offset. The trap's coordinates are entered in `trap.cfg` when it is set up.
+The sorting tool exports a season as a Camera Trap Data Package, placed at those coordinates;
+without them the export stops and says so, while the trap itself runs on. Entries 48, 81 and 83;
+[ADR](adr/records-as-csv-and-camtrap-dp.md).
+Rejected: only the trap's own format; the coordinates in a file on the computer, or typed at each
+export.
 
 ### The state summary is a FieldMesh reading
 Once a day, after the empty-view picture, the camera controller appends one FieldMesh reading to the
-state file: the contract's core fields plus `trapPasses`, `trapFreeMB` and `trapViewClear`, which
-the FieldMesh backend stores although it does not model them. No radio in version 1. Entries 51 and
-60; [ADR](adr/state-summary-as-fieldmesh-reading.md).
+state file: the contract's core fields, `latitude` and `longitude` from `trap.cfg` (null when not
+set), and `trapPasses`, `trapFreeMB` and `trapViewClear`, which the FieldMesh backend stores
+although it does not model them. No radio in version 1. Entries 51, 60 and 83;
+[ADR](adr/state-summary-as-fieldmesh-reading.md).
 Rejected: a FieldMesh node over ESP-NOW (needs a hub on every site); the aux1 and aux2 fields.
 
 ### Power
 A 6 V solar panel of about 1 W on a short stake beside the trap charges two 18650 cells in parallel
 (about 7 Ah) through the FieldHub's CN3791 charger design, with charging stopped below 0 °C by a
-thermistor on the pack. The design plans for 200 passes a day; see the power estimate below.
-Entries 42, 46, 52, 53 and 61.
+thermistor on the pack. The design plans for 200 passes a day; see the power estimate below. If
+the bench measures more, the pack grows rather than features shrinking. Entries 42, 46, 52, 53, 61
+and 77.
 Rejected: a 12 Ah pack without solar; lithium AA cells; a panel on the bucket top or a fence post;
 one cell.
 
@@ -96,11 +122,16 @@ parameters, generating STL files; the boards are drawn in EasyEDA. Entry 62;
 Rejected: KiCad and OpenSCAD.
 
 ### Sorting as a Python tool with a local review page
-A Python package with a command line reads a copy of the card, marks empty pictures against the
-day's empty view, sorts the rest into broad groups once a model exists, serves a local review page
-where people name species, and exports and evaluates. The group model is a small pretrained image
-model fine-tuned with PyTorch. Entries 22, 49 and 63; [ADR](adr/sorting-tool-in-python.md).
-Rejected: a general labelling tool; an existing camera-trap detector.
+A Python package with a command line copies a card into a season folder, marks pictures that look
+like their survey day's empty view, serves a local review page, and summarises, exports and
+evaluates. The review page shows each pass with a picture not marked empty, its pictures side by
+side; a person picks the broad group (frog, toad, newt, lizard, snake, turtle or other) and adds the
+species name once for the pass, and can mark single pictures empty or "can't tell". No learned model
+is part of it; people's labels are kept so that a model can learn from them later. Entries 49, 67,
+75, 78, 80, 82 and 84; [ADR](adr/sorting-tool-in-python.md).
+Rejected: a general labelling tool; a group model fine-tuned with PyTorch (nothing to train it on
+before the first season is sorted); labelling each picture on its own (about three times the
+clicks).
 
 ### Three levels of tests
 Unit tests on the computer for firmware logic and the sorting tool; bench runs with a model-animal
@@ -220,6 +251,7 @@ struct TrapConfig {
   bool pilot_mode;
   uint8_t empty_view_hour;                    // local hour of the daily picture and summary
   float drop_threshold;                       // filter: largest difference still "empty"
+  float latitude, longitude;                  // decimal degrees from setup; NaN when not set
 };
 
 struct PassRecord {                           // one row of a survey day's pass file
@@ -255,7 +287,8 @@ size_t pass_csv_line(const PassRecord& r, char* out, size_t size);
 /// One fault as a CSV line for faults.csv.
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out, size_t size);
 
-/// The day's state summary as one FieldMesh reading, JSON on one line.
+/// The day's state summary as one FieldMesh reading, JSON on one line, with the configured
+/// latitude and longitude, or null for them when not set.
 size_t summary_json(const StateSummary& s, const TrapConfig& c, char* out, size_t size);
 ```
 
@@ -279,20 +312,16 @@ A Python package with the command `trapsort`.
 
 ```python
 # sorting/trapsort/model.py
+Group = Literal["frog", "toad", "newt", "lizard", "snake", "turtle", "other"]
 @dataclass
 class Picture:
-    """One stored picture: file, pass_id, survey day, empty mark, group and confidence."""
+    """One stored picture: file, pass_id, survey day and empty mark."""
 @dataclass
 class PassRecord:
     """One row of a pass file, with its pictures."""
 @dataclass
 class Season:
     """Everything read from one card copy: passes, pictures, empty views, faults, summaries."""
-@dataclass
-class LabelledPicture:
-    """A picture with a group from a person's name or a bucket label."""
-class GroupModel:
-    """A trained group model: predict(picture) gives a group and a confidence."""
 @dataclass
 class DayCount:
     """Passes in one survey day for one name or group and one direction."""
@@ -304,43 +333,36 @@ def import_card(card: Path, season_dir: Path) -> Season:
     """Checks a card with read_card and copies it into season_dir/card; raises CardError, also
     when the season already holds a card."""
 def read_season(season_dir: Path) -> Season:
-    """Reads season_dir/card and, where present, the model's results in sorting.csv."""
+    """Reads season_dir/card and, where present, the empty marks in sorting.csv."""
 def write_sorting(season: Season, season_dir: Path) -> None:
-    """Writes each picture's empty mark, group and confidence to season_dir/sorting.csv."""
+    """Writes each picture's empty mark and difference to season_dir/sorting.csv."""
 
 # sorting/trapsort/empty.py
 def mark_empty(season: Season, threshold: float) -> None:
     """Marks pictures that differ from their survey day's empty view by less than threshold."""
 
-# sorting/trapsort/groups.py
-Group = Literal["frog", "toad", "newt", "lizard", "snake", "other"]
-def sort_groups(season: Season, model: GroupModel | None) -> None:
-    """Gives each picture not marked empty a group and confidence; none without a model."""
-def train_group_model(pictures: Iterable[LabelledPicture], out: Path,
-                      min_per_group: int = 50) -> GroupModel:
-    """Fine-tunes a small pretrained model; raises TooFewLabels below min_per_group."""
-def load_group_model(path: Path) -> GroupModel:
-    """Loads a model that train_group_model saved; needs the extra trapsort[model]."""
-
 # sorting/trapsort/labels.py
 class LabelStore:
-    """Names, groups, empty marks and bucket labels in a season's labels.csv; the latest label
-    of each kind counts."""
+    """Names, groups, empty and can't-tell marks and bucket labels in a season's labels.csv;
+    the latest label of each kind counts."""
     def __init__(self, path: Path) -> None: ...
     def set_name(self, picture: str, name: str, by: str) -> None: ...
-    def set_group(self, picture: str, group: Group, by: str,
-                  model_group: Group | None = None) -> None: ...
+    def set_group(self, picture: str, group: Group, by: str) -> None: ...
     def set_empty(self, picture: str, empty: bool, by: str) -> None: ...
+    def set_unclear(self, picture: str, by: str) -> None: ...
     def add_bucket_label(self, pass_id: str, name: str, group: Group,
                          checked_at: datetime) -> None: ...
     def name(self, picture: str) -> str | None: ...
     def group(self, picture: str) -> Group | None: ...
     def empty(self, picture: str) -> bool | None: ...
+    def unclear(self, picture: str) -> bool: ...
     def bucket_labels(self, pass_id: str) -> list[tuple[str, Group, datetime]]: ...
 
 # sorting/trapsort/review.py
 def serve_review(season: Season, labels: LabelStore, port: int = 8765) -> None:
-    """Serves the local review page until stopped; each name or correction is saved at once."""
+    """Serves the local review page until stopped: each pass with a picture not marked empty,
+    its pictures side by side; a group and name are saved for every picture of the pass at
+    once, or picture by picture, and each mark is saved at once."""
 
 # sorting/trapsort/summary.py
 def passes_per_survey_day(season: Season, labels: LabelStore) -> list[DayCount]:
@@ -348,7 +370,8 @@ def passes_per_survey_day(season: Season, labels: LabelStore) -> list[DayCount]:
 
 # sorting/trapsort/camtrapdp.py
 def export_camtrap_dp(season: Season, labels: LabelStore, out: Path) -> None:
-    """Writes datapackage.json, deployments.csv, media.csv and observations.csv."""
+    """Writes datapackage.json, deployments.csv, media.csv and observations.csv; raises
+    ExportError when the card's trap.cfg holds no coordinates."""
 
 # sorting/trapsort/evaluate.py
 @dataclass
@@ -359,7 +382,9 @@ class BucketChecks:
     """Rows of bucket_checks.csv: the animals found in the bucket at each check."""
 @dataclass
 class Report:
-    """Shares noticed, photographed and identified; missed animals; passes by sensing."""
+    """Shares noticed, with a usable picture and identified; missed animals; passes by sensing.
+    A pass has a usable picture when a person gave any of its pictures a group or a name, and is
+    identified when that name matches the animal the reference names."""
 def read_plan(path: Path) -> BenchPlan:
     """Reads plan.csv; raises PlanError on a malformed row."""
 def read_bucket_checks(path: Path) -> BucketChecks:
@@ -392,7 +417,7 @@ def match_plan(run: BenchRun, window_s: float = 2.0) -> list[PlannedPass]:
 ### On the memory card
 ```
 trap.cfg                       key=value lines: trap_id, utc_offset_min, pilot_mode,
-                               empty_view_hour, drop_threshold
+                               empty_view_hour, drop_threshold, latitude, longitude
 passes/2026-05-14.csv          one file per survey day (noon to noon, local)
 pictures/2026-05-14/           <pass_id>_<n>.jpg, and empty_<HHMM>.jpg for the daily picture
 faults.csv                     time_utc,fault,detail
@@ -409,8 +434,8 @@ Fault kinds: `beam_blocked`, `beam_clear`, `battery_low`, `storage_low`, `camera
 A state summary line:
 ```json
 {"datetime":"2026-05-14T10:00:00Z","nodeId":"ECT_0A1B2C","seqNum":12,"sensorPresent":0,
- "qualityFlags":0,"configVersion":1,"batVoltage":3.98,"airTemp":17.5,
- "trapPasses":143,"trapFreeMB":98112,"trapViewClear":true}
+ "qualityFlags":0,"configVersion":1,"batVoltage":3.98,"airTemp":17.5,"latitude":49.4521,
+ "longitude":7.7541,"trapPasses":143,"trapFreeMB":98112,"trapViewClear":true}
 ```
 `airTemp` comes from the clock chip in the hood; `qualityFlags` bit 0 is set when the view is not
 clear.
@@ -419,24 +444,24 @@ clear.
 A season is a folder; every `trapsort` command except `import` takes it.
 ```
 card/                          the card copy, as `trapsort import` copied it; never changed
-sorting.csv                    the model's results, written again by each `trapsort sort`
+sorting.csv                    the computer's empty marks, written again by each `trapsort sort`
 labels.csv                     people's labels and bucket labels; only ever appended to
-season.cfg                     key=value settings of the season, such as for the export
 ```
 
-- `sorting.csv`: `picture,pass_id,survey_day,empty,difference,group,confidence,model`, one row per
-  picture, with `difference` from the day's empty view and `model` the file the groups came from.
-- `labels.csv`: `picture,pass_id,kind,value,model_group,by,at`, where `kind` is `name`, `group`,
-  `empty` (value `true` or `false`), `bucket` (a name) or `bucket_group`. `model_group` holds the
-  model's group when a person sets a group. Bucket rows name the pass and leave `picture` empty.
+- `sorting.csv`: `picture,pass_id,survey_day,empty,difference`, one row per picture, with
+  `difference` from the day's empty view.
+- `labels.csv`: `picture,pass_id,kind,value,by,at`, where `kind` is `name`, `group`, `empty` (value
+  `true` or `false`), `unclear` (a picture marked "can't tell"), `bucket` (a name) or
+  `bucket_group`. Bucket rows name the pass and leave `picture` empty.
 - `bucket_checks.csv`: `checked_at,trap_id,animal,name,group`, one row per animal found in the
   bucket during the field phase. An animal matches the earliest unmatched pass since the previous
   check whose pictures show its group; passes that went through come before turned-back ones.
-- The Camtrap DP export: one deployment per trap season; one media row per picture; one
-  event-level observation per pass, with `observationType` `animal`, `blank` or `unclassified`,
-  the name from the labels, `classificationMethod` `human` or `machine`, and the direction in
-  `observationComments`. A picture's time is the pass's start plus half a second per picture
-  before it, noted as estimated in `mediaComments`.
+- The Camtrap DP export: one deployment per trap season, placed at the coordinates in the card's
+  `trap.cfg`; one media row per picture; one event-level observation per pass, with
+  `observationType` `animal`, `blank` or `unclassified`, the group or name from the labels,
+  `classificationMethod` `human`, and the direction in `observationComments`. A picture's time is
+  the pass's start plus half a second per picture before it, noted as estimated in
+  `mediaComments`.
 
 ### A bench run
 `plan.csv`: `planned_at,model,body_length_mm,height_mm,speed_mm_s,temperature_c,light,direction`,
