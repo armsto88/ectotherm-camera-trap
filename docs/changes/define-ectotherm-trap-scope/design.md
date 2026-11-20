@@ -300,6 +300,13 @@ class DayCount:
 # sorting/trapsort/card.py
 def read_card(card: Path) -> Season:
     """Reads pass records, pictures, faults and summaries from a card copy; raises CardError."""
+def import_card(card: Path, season_dir: Path) -> Season:
+    """Checks a card with read_card and copies it into season_dir/card; raises CardError, also
+    when the season already holds a card."""
+def read_season(season_dir: Path) -> Season:
+    """Reads season_dir/card and, where present, the model's results in sorting.csv."""
+def write_sorting(season: Season, season_dir: Path) -> None:
+    """Writes each picture's empty mark, group and confidence to season_dir/sorting.csv."""
 
 # sorting/trapsort/empty.py
 def mark_empty(season: Season, threshold: float) -> None:
@@ -312,13 +319,24 @@ def sort_groups(season: Season, model: GroupModel | None) -> None:
 def train_group_model(pictures: Iterable[LabelledPicture], out: Path,
                       min_per_group: int = 50) -> GroupModel:
     """Fine-tunes a small pretrained model; raises TooFewLabels below min_per_group."""
+def load_group_model(path: Path) -> GroupModel:
+    """Loads a model that train_group_model saved; needs the extra trapsort[model]."""
 
 # sorting/trapsort/labels.py
 class LabelStore:
-    """Names, group corrections and bucket labels in labels.csv beside the season."""
+    """Names, groups, empty marks and bucket labels in a season's labels.csv; the latest label
+    of each kind counts."""
+    def __init__(self, path: Path) -> None: ...
     def set_name(self, picture: str, name: str, by: str) -> None: ...
-    def set_group(self, picture: str, group: Group, by: str) -> None: ...
-    def add_bucket_label(self, pass_id: str, name: str, checked_at: datetime) -> None: ...
+    def set_group(self, picture: str, group: Group, by: str,
+                  model_group: Group | None = None) -> None: ...
+    def set_empty(self, picture: str, empty: bool, by: str) -> None: ...
+    def add_bucket_label(self, pass_id: str, name: str, group: Group,
+                         checked_at: datetime) -> None: ...
+    def name(self, picture: str) -> str | None: ...
+    def group(self, picture: str) -> Group | None: ...
+    def empty(self, picture: str) -> bool | None: ...
+    def bucket_labels(self, pass_id: str) -> list[tuple[str, Group, datetime]]: ...
 
 # sorting/trapsort/review.py
 def serve_review(season: Season, labels: LabelStore, port: int = 8765) -> None:
@@ -397,14 +415,28 @@ A state summary line:
 `airTemp` comes from the clock chip in the hood; `qualityFlags` bit 0 is set when the view is not
 clear.
 
-### Beside a season on the computer
-- `labels.csv`: `picture,pass_id,kind,value,by,at`, where `kind` is `name`, `group` or `bucket`.
+### A season on the computer
+A season is a folder; every `trapsort` command except `import` takes it.
+```
+card/                          the card copy, as `trapsort import` copied it; never changed
+sorting.csv                    the model's results, written again by each `trapsort sort`
+labels.csv                     people's labels and bucket labels; only ever appended to
+season.cfg                     key=value settings of the season, such as for the export
+```
+
+- `sorting.csv`: `picture,pass_id,survey_day,empty,difference,group,confidence,model`, one row per
+  picture, with `difference` from the day's empty view and `model` the file the groups came from.
+- `labels.csv`: `picture,pass_id,kind,value,model_group,by,at`, where `kind` is `name`, `group`,
+  `empty` (value `true` or `false`), `bucket` (a name) or `bucket_group`. `model_group` holds the
+  model's group when a person sets a group. Bucket rows name the pass and leave `picture` empty.
 - `bucket_checks.csv`: `checked_at,trap_id,animal,name,group`, one row per animal found in the
-  bucket during the field phase.
+  bucket during the field phase. An animal matches the earliest unmatched pass since the previous
+  check whose pictures show its group; passes that went through come before turned-back ones.
 - The Camtrap DP export: one deployment per trap season; one media row per picture; one
   event-level observation per pass, with `observationType` `animal`, `blank` or `unclassified`,
   the name from the labels, `classificationMethod` `human` or `machine`, and the direction in
-  `observationComments`.
+  `observationComments`. A picture's time is the pass's start plus half a second per picture
+  before it, noted as estimated in `mediaComments`.
 
 ### A bench run
 `plan.csv`: `planned_at,model,body_length_mm,height_mm,speed_mm_s,temperature_c,light,direction`,

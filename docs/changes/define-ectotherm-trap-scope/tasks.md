@@ -140,6 +140,10 @@ test carrying `# spec: <id>`.
   Tests:
   - `0930417b` A season is summarised
   Done when: an exported package passes the Camtrap DP validation.
+- [ ] 6.5 Change `trapsort import` to check a card and copy it into a season folder's `card/` with
+  `import_card`, and add `read_season` and `write_sorting` (changes what 6.1 built).
+  Done when: an imported card equals the original, a second import into the same season is
+  refused, and `read_season` reads back what `write_sorting` wrote.
 
 ## 7. Evaluation
 - [ ] 7.1 Build `read_plan`, `read_bucket_checks`, `evaluate` and the command `trapsort evaluate`.
@@ -170,3 +174,4 @@ test carrying `# spec: <id>`.
   5.1, 8.1) are built ahead of the hardware tasks, which wait for bench work.
 - 2026-11-20: 6.1 was checked against a card copy written by the tests in the format the
   firmware writes; the card of a real bench run follows with 5.2.
+- 2026-11-20: 6.5 is built right after 6.1, since 6.2 to 6.4 take the season folder it brings.

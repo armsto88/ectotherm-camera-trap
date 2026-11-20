@@ -751,3 +751,59 @@
   cannot tell from its crossings alone whether a pass is open, since crossings on ignored beams open
   none. Building the pass library brought it up.
 - **Rejected:** The camera working out an open pass itself (it would repeat the builder's rules).
+
+## 67. Where does the sorting tool keep a season and its own results?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** A season is a folder on the computer that holds the card copy in `card/` and the
+  tool's own files beside it: `sorting.csv` for the model's results, `labels.csv` and
+  `season.cfg`. `trapsort import` checks a card and copies it into a season folder; every other
+  command takes the season folder.
+- **Reason:** The model's results must last between commands, people's labels must never mix with
+  machine output, and sorting again must never touch people's work. The design said only that
+  labels lie "beside the season"; building the sorting tool brought it up.
+- **Rejected:** Keeping the model's results as rows in `labels.csv`, one log for people and model
+  (mixes machine and human entries; sorting again appends thousands of rows).
+
+## 68. How are labels written and read back?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** `LabelStore` opens a season's `labels.csv` and also reads labels back: a picture's
+  name, group and empty mark, and a pass's bucket labels. People can correct an empty mark. Each
+  group correction keeps the model's group at that moment in a new column `model_group`.
+  `add_bucket_label` takes the group as well.
+- **Reason:** The summary, export, evaluation and training read labels back; a corrected group must
+  be stored together with the model's original group; the specs let people correct an empty mark.
+  The design listed only the writing methods.
+- **Rejected:** Each reader parsing `labels.csv` itself, and taking the model's original group from
+  `sorting.csv` (sorting again would overwrite it).
+
+## 69. How is a trained group model loaded, and is PyTorch required?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** A trained group model is loaded with `load_group_model(path)`. PyTorch is an
+  optional extra of the tool, `trapsort[model]`, and the training test runs where it is installed.
+- **Reason:** `trapsort sort` has to load what `trapsort train` saved; PyTorch is a large download
+  that reading, reviewing and exporting do not need.
+- **Rejected:** PyTorch as a required dependency (a large download for every user).
+
+## 70. What time does a picture get in the Camtrap DP export?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** Each picture's time is the pass's start plus half a second per picture before it,
+  noted as estimated in the media comments; observations use the pass's exact start and end.
+- **Reason:** Camtrap DP requires a time for every picture, and the pass file records only the
+  pass's start and end.
+- **Rejected:** The firmware writing each picture's time into the pass file (a new column; changes
+  the records library already built).
+
+## 71. How is an animal in the bucket matched to a pass?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** In the field phase, a bucket animal matches the earliest unmatched pass since the
+  previous check whose pictures show its group; passes that went through the trap come before
+  turned-back ones.
+- **Reason:** Bucket checks give only the check time and the animal, so group and time are what can
+  be matched.
+- **Rejected:** Also requiring the direction toward the bucket (needs the bucket's side recorded in
+  `season.cfg`).
