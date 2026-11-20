@@ -455,3 +455,151 @@
   every picture (startles animals during the pass, which can make them turn back and inflate the
   pass counts of entry 16, and costs more power over a season); relying on daylight without
   designing for it (too little light inside the enclosure).
+
+## 39. Where do the two beam points sit?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** One beam point near each end of a passage about 25 to 30 cm long, with the camera's
+  view between them. The order in which an animal crosses them still gives the direction, and an
+  animal that turns back crosses only the first.
+- **Reason:** A camera woken from sleep needs time before its first picture, estimated at 0.3 to 1
+  second; with a point at each end, the animal is still walking towards the middle of the view when
+  the camera is ready, without keeping the camera on all season. The accepted cost: a longer
+  passage, which some animals may hesitate to enter (entry 27), and more material; sprinting animals
+  may still outrun the camera, which the bench test measures.
+- **Rejected:** Both points a few centimetres apart in the middle (the camera would have to be on
+  already when the animal is noticed, which costs power all season).
+- **Replaces:** 31 (in the spacing of the beam points: a few centimetres apart becomes one near each
+  end of the passage).
+
+## 40. What kind of laser sensing makes the beams?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Pulsed infrared laser beams: a small infrared laser on one wall and a light sensor
+  on the other for each beam, pulsed and checked a few hundred times a second; an interrupted beam
+  means something is there.
+- **Reason:** By far the least power for a season of watching, estimated at about 0.2 mA for six
+  beams, and a clear yes or no per beam; at 250 pulses a second a 3 cm animal running at 1 m/s is
+  still seen several times. The accepted cost: electronics on both walls, beams that must stay
+  aligned, and light sensors that must not be fooled by sunlight at the passage ends.
+- **Rejected:** Laser distance sensors measuring across the passage (several times the power for a
+  season; slower and larger).
+
+## 41. What watches the beams while the camera sleeps?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** A separate small low-power controller runs the beams and the PIR sensor, times every
+  crossing, and wakes the camera controller, an ESP32-S3, when a pass starts.
+- **Reason:** Watching never pauses, even while pictures are written, and the always-on part uses
+  very little power. The accepted cost: two pieces of firmware and a link between them to build and
+  test.
+- **Rejected:** The ESP32-S3 alone, with its low-power co-processor watching the beams (the
+  co-processor is limited, and watching may pause while the main part works with the camera); the
+  prototype's ESP32-WROVER and OV2640 (entry 5 keeps it as a test bench only; weaker camera, no
+  low-power watching).
+
+## 42. What powers the trap for a season?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** A small solar panel keeps a smaller rechargeable pack charged.
+- **Reason:** Chosen on the round 1 page of propose, without a note. It also guards against a load
+  higher than estimated, for example from false triggers, since the estimate of about 4 to 5 Ah for
+  six months at 200 passes a day is not yet measured. The accepted weaknesses: fences often stand in
+  shade or tall vegetation; a panel near the ground gets dirty, broken or stolen; more electronics.
+- **Rejected:** A rechargeable lithium-ion pack of about 12 Ah without solar (no reason given);
+  non-rechargeable lithium AA cells (new cells every season cost money and make waste).
+
+## 43. What is the passage body made of?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** An upturned standard bucket forms the dark hood; a 3D-printed insert inside carries
+  the floor, the beam walls, the camera and the electronics; the fence ends meet openings cut in two
+  opposite sides.
+- **Reason:** Buckets are cheap, sold everywhere (entry 12) and known to survey teams; the insert
+  keeps beams and camera aligned whatever bucket is used, and leaves room for a side view (entry
+  37). The accepted cost: bucket sizes differ between makers and countries, so the insert must fit a
+  range, and the round shape wastes space.
+- **Rejected:** A purpose-built housing printed or moulded as one piece (costlier in small numbers;
+  repairable only with the maker's parts); a channel with a separate box on top (more cutting and
+  fitting per trap; more joints to seal).
+
+## 44. Which camera does the trap use?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** An OV5640 camera module without an infrared-cut filter, with a fixed-focus lens set
+  to the passage floor.
+- **Reason:** Works with the ESP32-S3, has five megapixels, sees infrared light, and a fixed focus
+  suits the fixed distance to the floor.
+- **Rejected:** The prototype's OV2640 (two megapixels, weaker in low light).
+
+## 45. Which infrared light does the trap use?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** 940 nm infrared light, which shows no red glow.
+- **Reason:** Least visible to animals, in line with entry 38; at a few centimetres there is light
+  enough for the camera.
+- **Rejected:** 850 nm (brighter pictures, but a faint red glow some animals may see).
+
+## 46. What load does the design plan for?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** An average of 200 passes a day over a season, false triggers included; short peaks
+  above that are fine.
+- **Reason:** Sets the size of battery, solar panel and memory card with room for busy nights; the
+  bench and field tests check it.
+- **Rejected:** 50 passes a day (a smaller battery, but busy sites would run out).
+
+## 47. How are the firmwares built?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Both firmwares, the beam watcher's and the camera controller's, are built with
+  PlatformIO and the Arduino framework, as in FieldMesh.
+- **Reason:** The same tools and habits as the user's other ESP32 work.
+- **Rejected:** ESP-IDF directly (a second toolchain to learn and maintain).
+
+## 48. How are pass records stored and exported?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Pass records are kept as one CSV file per survey day next to the JPEG pictures on
+  the memory card; the computer tool exports a season as a Camera Trap Data Package (Camtrap DP).
+- **Reason:** Readable with any tool, and Camtrap DP is the open standard that other camera-trap
+  software and data portals read.
+- **Rejected:** Only the trap's own format (data would need converting before others could use it).
+
+## 49. What does the sorting run on?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** A Python tool on a computer, with a small local page in the browser where people
+  name species and correct the model.
+- **Reason:** Fits the pass records and the bucket labels exactly, and needs no account or server.
+- **Rejected:** A general labelling tool such as Label Studio (does not know passes, directions or
+  bucket labels; needs setting up and adapting).
+
+## 50. Where do the prototype files go?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** The prototype files move unchanged to a `prototype` folder; the new trap gets
+  `firmware`, `sorting`, `hardware` and `docs` folders.
+- **Reason:** Keeps the prototype as the test bench of entry 5 without mixing it with the new trap.
+- **Rejected:** Leaving the prototype files where they are (mixes the old test bench with the new
+  trap at the top of the repository).
+
+## 51. What happens to the daily state message in version 1?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Version 1 has no radio. Once a day the trap works out a short state summary (battery
+  level, free storage, passes since the last summary, and whether the daily picture showed a clear
+  view) and writes it to the memory card in the format FieldMesh takes. Letting the trap feed
+  FieldMesh on its own, with its own uplink and no hub on the site, is a later change.
+- **Reason:** Raised in propose: sending the message over ESP-NOW needs a FieldHub or node on every
+  site, a second piece of hardware for one daily message. The user would rather the trap fed
+  FieldMesh on its own, but not in version 1. Preparing the summary now keeps that later change
+  small, and a daily state line on the card is useful when the trap is collected. The accepted cost:
+  in version 1 a fault early in the season goes unnoticed until the visit; the daily check picture
+  (entry 30) and the fault records only explain afterwards what went wrong.
+- **Rejected:** The trap as a FieldMesh node over ESP-NOW in version 1 (works only where a FieldHub
+  stands within range, so one is needed on every site); leaving the state summary out of version 1
+  entirely (the later change would start from nothing); a mobile-network or LoRaWAN radio in version
+  1 (a SIM or a gateway per site, and not wanted for version 1).
+- **Replaces:** 28 (an optional add-on that sends a daily message where coverage exists becomes a
+  daily state summary on the memory card, with no radio in version 1).

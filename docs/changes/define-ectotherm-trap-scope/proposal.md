@@ -41,9 +41,9 @@ is kept only as a test bench.
   model removes empty pictures and sorts the rest into broad groups; people name the species and
   check the sorting. Small mammals and large invertebrates are recorded, but the trap is not
   designed for them.
-- The trap runs a whole season, three to six months, without a visit. It works without any
-  connection; where coverage exists, an add-on sends a daily message with battery, storage, number
-  of passes, and whether its view is clear.
+- The trap runs a whole season, three to six months, without a visit, and needs no connection. Once
+  a day it writes a short state summary to its memory card: battery, free storage, passes since the
+  last summary, and whether its view is clear, in the format FieldMesh takes.
 - Results report three things separately: whether the trigger fired, whether a usable picture was
   taken, and whether the animal was identified. Missed animals are counted in two stages: controlled
   tests with model animals and known animals, then a short field phase with a bucket behind the trap
@@ -64,7 +64,8 @@ New:
   and the relative numbers drawn from them.
 - picture-sorting: the filter on the trap, the model that sorts the pictures afterwards, and people
   naming the species.
-- unattended-season: running a whole season without a visit, with optional daily state messages.
+- unattended-season: running a whole season without a visit, with a daily state summary on the
+  memory card.
 - trap-evaluation: how trigger, picture and identification success are measured, how missed animals
   are counted, and when the targets are set.
 
@@ -100,6 +101,8 @@ New:
   22).
 - Parts, code and housing; they follow in the design step (propose) and the build (implement) (entry
   7).
+- Feeding FieldMesh from the trap on its own, with its own uplink and no hub on the site; a later
+  change, [issue #1](https://github.com/armsto88/ectotherm-camera-trap/issues/1) (entry 51).
 
 ## References
 - [Hobbs & Brehme 2017, An improved camera trap for amphibians, reptiles, small mammals, and large
@@ -114,7 +117,7 @@ New:
 - [Martin et al. 2017, Set AHDriFT: Applying game cameras to drift fences for surveying herpetofauna
   and small mammals](https://doaj.org/article/91291eb4599b4834a9e831fceb8eb0aa)
 - [Jarvis et al. 2019, amphibian road tunnels monitored with time-lapse cameras
-  (Froglife)](https://www.froglife.org/wp-content/uploads/2019/03/Jarvis2019_Article_RoadMitigationUsingTunnelsAndF-002.pdf)
+(Froglife)](https://www.froglife.org/wp-content/uploads/2019/03/Jarvis2019_Article_RoadMitigationUsingTunnelsAndF-002.pdf)
 - [Amphibian survey with fences and buckets,
   Rhineland-Palatinate](https://www.zobodat.at/pdf/Fauna-Flora-Rheinland-Pfalz_11_0191-0205.pdf)
 - [Sand lizard relocations with fences and buckets,
