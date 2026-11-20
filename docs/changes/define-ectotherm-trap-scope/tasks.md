@@ -32,7 +32,7 @@ test carrying `# spec: <id>`.
   - `94733795` FieldMesh accepts the summary
   Done when: `survey_day` puts 23:00 and 01:00 local time into the same survey day, and
   `parse_config` keeps defaults for missing keys.
-- [ ] 2.4 Build the camera library `filter` (`thumbnail_difference`, `FilterResult`, `judge`).
+- [x] 2.4 Build the camera library `filter` (`thumbnail_difference`, `FilterResult`, `judge`).
   Tests:
   - `5c654b74` An obviously empty picture is dropped
   - `3007f937` An unsure picture is kept
