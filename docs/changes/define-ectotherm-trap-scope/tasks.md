@@ -123,7 +123,7 @@ test carrying `# spec: <id>`.
   - `40ee900d` A trap where there is no coverage
 
 ## 6. Sorting tool
-- [ ] 6.1 Build the `trapsort` package with its types in `model.py`, `read_card` and the command
+- [x] 6.1 Build the `trapsort` package with its types in `model.py`, `read_card` and the command
   `trapsort import`.
   Done when: it reads the card copy of a bench run, and raises `CardError` on a malformed pass file.
 - [ ] 6.2 Build `mark_empty`, `sort_groups`, `train_group_model` and the commands `trapsort sort`
@@ -166,3 +166,7 @@ test carrying `# spec: <id>`.
   - `746fea6c` An animal stays in the passage
 
 ## Progress notes
+- 2026-11-20: By the user's choice, the tasks that can be finished at a computer (6.1–6.4, 7.1,
+  5.1, 8.1) are built ahead of the hardware tasks, which wait for bench work.
+- 2026-11-20: 6.1 was checked against a card copy written by the tests in the format the
+  firmware writes; the card of a real bench run follows with 5.2.
