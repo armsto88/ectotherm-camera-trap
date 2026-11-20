@@ -22,7 +22,7 @@ test carrying `# spec: <id>`.
   - `49a98a46` A pass from side B to side A
   - `978712b4` An animal turns back
   - `e6a90220` An animal goes through and comes back
-- [ ] 2.3 Build the camera library `records` (`TrapConfig`, `parse_config`, `survey_day`,
+- [x] 2.3 Build the camera library `records` (`TrapConfig`, `parse_config`, `survey_day`,
   `PassRecord`, `pass_csv_header`, `pass_csv_line`, `FaultKind`, `fault_csv_line`, `StateSummary`,
   `summary_json`), checking summaries against the readings table of the FieldMesh upload contract,
   version 1 of 2026-11-16.
