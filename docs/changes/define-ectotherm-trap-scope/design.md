@@ -204,6 +204,8 @@ class PassBuilder {
   /// Closes an open pass after quiet_ms without events; true when a pass completed.
   bool tick(uint32_t now_ms);
   const Pass& pass() const;
+  /// True while a pass is open.
+  bool open() const;
 };
 ```
 

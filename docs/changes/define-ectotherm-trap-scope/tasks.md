@@ -16,7 +16,7 @@ test carrying `# spec: <id>`.
   tests.
   Done when: unit tests show steady light cancelled, one entered and one left crossing per broken
   beam with the right heights, and a beam reported stuck only after `stuck_ms`.
-- [ ] 2.2 Build the camera library `passes` (`PassBuilder`, `Pass`, `Direction`).
+- [x] 2.2 Build the camera library `passes` (`PassBuilder`, `Pass`, `Direction`).
   Tests:
   - `b3059cbe` A pass from side A to side B
   - `49a98a46` A pass from side B to side A

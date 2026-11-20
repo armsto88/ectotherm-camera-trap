@@ -741,3 +741,13 @@
   not the task.
 - **Rejected:** Dropping the `.gitignore` from task 1.1 (build output would show up in every
   commit).
+
+## 66. How does the camera know a pass is under way?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** `PassBuilder` gains `bool open() const`, true while a pass is open; the design's
+  interface for `passes` lists it.
+- **Reason:** The camera takes a picture every half second while the animal is in the passage, and
+  cannot tell from its crossings alone whether a pass is open, since crossings on ignored beams open
+  none. Building the pass library brought it up.
+- **Rejected:** The camera working out an open pass itself (it would repeat the builder's rules).
