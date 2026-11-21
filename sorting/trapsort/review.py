@@ -230,8 +230,9 @@ def _render_picture(picture: Picture, labels: LabelStore) -> str:
     )
     name = html.escape(labels.name(picture.name) or "")
     src = "/picture/" + quote(picture.name)
+    classes = "picture is-empty" if empty else "picture"
     return f"""
-    <figure class="picture{" is-empty" if empty else ""}" data-picture="{html.escape(picture.name)}">
+    <figure class="{classes}" data-picture="{html.escape(picture.name)}">
       <img src="{src}" alt="{html.escape(picture.name)}" loading="lazy">
       <figcaption>
         <span class="state">{html.escape(state)}</span>

@@ -268,7 +268,7 @@ test carrying `# spec: <id>`.
   and a malformed model type raises `CardError`.
 
 ## 7. Evaluation
-- [ ] 7.1 Build `read_plan`, `evaluate` and the command `trapsort evaluate`, with the bucket
+- [x] 7.1 Build `read_plan`, `evaluate` and the command `trapsort evaluate`, with the bucket
   matching of 6.3, counting a pass as having a usable picture when a person gave any of its
   pictures a group or a name, and as identified when that name matches the animal the reference
   names; a run with pictures nobody has looked at is reported as not fully sorted. The report

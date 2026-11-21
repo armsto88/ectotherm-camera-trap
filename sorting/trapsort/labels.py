@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from .model import GROUPS, Group
 
@@ -91,7 +92,7 @@ class LabelStore:
 
     def group(self, picture: str) -> Group | None:
         row = self._latest(picture, "group", "unclear")
-        return row["value"] if row and row["kind"] == "group" else None  # type: ignore[return-value]
+        return cast(Group, row["value"]) if row and row["kind"] == "group" else None
 
     def empty(self, picture: str) -> bool | None:
         row = self._latest(picture, "empty")
