@@ -363,3 +363,6 @@ test carrying `# spec: <id>`.
   7.3 on the prototype; then 3.2, 4.5, 4.6 and 5.8 on the trap's own boards; then 8.1, 9.1 and
   9.2. Task 3.4 and 5.10 are new; 3.1, 3.2, 4.1 to 4.6, 5.2 to 5.9 and 7.2 were rewritten before
   being built. The order chosen on 2026-11-20, computer tasks first, no longer holds.
+- 2026-11-21: By the user's choice, 3.4 is built before 3.3, so that bring-up can start; 3.1 stays
+  open until a printed insert is fitted. Until 4.1 and 4.2 write the firmware, each `prototype`
+  environment builds a bring-up program from `src/bringup/`.
