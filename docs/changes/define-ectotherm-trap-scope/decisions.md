@@ -1402,3 +1402,29 @@
   `INVALID`, an accepted one with `ACCEPTED`.
 - **Reason:** FieldMesh confirms commands by their ID and knows no outcome `REJECTED`; the design's
   command held only a cursor, type and payload.
+
+## 125. How does the trap's filter tell a picture from the empty view?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** By the largest difference over small overlapping patches of the greyscale
+  thumbnails, as the sorting tool marks empty pictures, instead of the difference averaged over
+  the whole picture; a new task changes what the filter's task built.
+- **Reason:** A 3 cm animal covers about one percent of the view: averaged over the whole picture
+  it comes out at about 0.0014 against a threshold of 0.03, so outside pilot mode a small warm
+  animal noticed by the PIR sensor alone could lose its pictures, while the spec keeps a picture
+  when unsure. Patch by patch the same animal comes out at 0.056 or more.
+- **Rejected:** Keeping the whole-picture average until the bench shows whether it drops pictures
+  (small animals' pictures at risk until then, and two measures for one question).
+
+## 126. Where are bucket animals matched to passes, and how do they become labels?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** One function matches the animals of `bucket_checks.csv` to passes by the design's
+  rule, next to the reading of that file, both built with the label store; the command
+  `trapsort bucket <season> <bucket_checks.csv>` stores each matched identification as a bucket
+  label, and evaluation uses the same matching.
+- **Reason:** The design gave the rule but named no function or command; one matching serves
+  labels and results alike, and the labels for the model are there as soon as the checks are
+  entered.
+- **Rejected:** Matching and storing bucket labels only when `trapsort evaluate` runs (labels wait
+  for an evaluation, and evaluating would also write labels).

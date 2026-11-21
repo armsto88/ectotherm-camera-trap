@@ -9,6 +9,9 @@ from pathlib import Path
 
 from .card import CardError, import_card, read_season, write_sorting
 from .empty import DEFAULT_THRESHOLD, mark_empty
+from .evaluate import PlanError, match_bucket_checks, read_bucket_checks
+from .labels import LabelError, LabelStore
+from .review import serve_review
 
 
 def _import(args: argparse.Namespace) -> int:
@@ -44,6 +47,37 @@ def _sort(args: argparse.Namespace) -> int:
     return 0
 
 
+def _review(args: argparse.Namespace) -> int:
+    season = read_season(args.season)
+    serve_review(season, LabelStore(args.season / "labels.csv"), args.port)
+    return 0
+
+
+def _bucket(args: argparse.Namespace) -> int:
+    season = read_season(args.season)
+    labels = LabelStore(args.season / "labels.csv")
+    matches = match_bucket_checks(season, labels, read_bucket_checks(args.checks))
+    stored = 0
+    for match in matches:
+        if match.pass_id is None:
+            continue
+        label = (match.name, match.group, match.checked_at)
+        if label not in labels.bucket_labels(match.pass_id):
+            labels.add_bucket_label(match.pass_id, match.name, match.group, match.checked_at)
+            stored += 1
+    matched = sum(1 for m in matches if m.pass_id)
+    print(
+        f"{len(matches)} animals from the bucket for trap {season.trap_id}: {matched} matched to "
+        f"a pass ({stored} new labels), {len(matches) - matched} without a matching pass"
+    )
+    for match in matches:
+        if match.pass_id is None:
+            print(
+                f"  no pass: {match.checked_at:%Y-%m-%d %H:%M} animal {match.animal} {match.name}"
+            )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="trapsort", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -68,10 +102,24 @@ def main(argv: list[str] | None = None) -> int:
     )
     sorting.set_defaults(run=_sort)
 
+    reviewing = commands.add_parser(
+        "review", help="serve the page on which people sort the passes and name the species"
+    )
+    reviewing.add_argument("season", type=Path, help="the season folder")
+    reviewing.add_argument("--port", type=int, default=8765, help="port on this computer")
+    reviewing.set_defaults(run=_review)
+
+    bucket = commands.add_parser(
+        "bucket", help="store the identifications of animals found in the bucket as labels"
+    )
+    bucket.add_argument("season", type=Path, help="the season folder")
+    bucket.add_argument("checks", type=Path, help="bucket_checks.csv of the field phase")
+    bucket.set_defaults(run=_bucket)
+
     args = parser.parse_args(argv)
     try:
         return args.run(args)
-    except CardError as error:
+    except (CardError, LabelError, PlanError) as error:
         print(f"trapsort: {error}", file=sys.stderr)
         return 1
 

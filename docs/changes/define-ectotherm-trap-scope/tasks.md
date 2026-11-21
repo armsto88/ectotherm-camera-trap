@@ -82,6 +82,13 @@ test carrying `# spec: <id>`.
   Tests:
   - `2a4e75f4` An unsigned firmware update is refused
   - `c3876d58` A model that fails its check is refused
+- [ ] 2.10 Change `thumbnail_difference` in `filter` to the largest mean difference over
+  overlapping patches of the thumbnails, as the sorting tool measures it (changes what 2.4 built).
+  Tests:
+  - `5c654b74` An obviously empty picture is dropped
+  - `3007f937` An unsure picture is kept
+  Done when: unit tests show a picture with a 3 cm animal anywhere in the view, also across the
+  border of two patches, kept, and an empty picture with noise dropped.
 
 ## 3. Hardware
 - [ ] 3.1 Write the insert script in `hardware/insert/`: a passage 15 cm wide across a bucket of
@@ -220,8 +227,9 @@ test carrying `# spec: <id>`.
   like their survey day's empty view and writes `sorting.csv`.
   Tests:
   - `6e42dbca` Pictures like the empty view are marked
-- [ ] 6.3 Build `LabelStore`, `serve_review` and the import of bucket identifications with their
-  groups as labels. The review page shows each pass with a picture not marked empty, its pictures
+- [x] 6.3 Build `LabelStore`, `serve_review` and the import of bucket identifications with their
+  groups as labels: `read_bucket_checks`, `match_bucket_checks` and the command `trapsort bucket`
+  (entry 126). The review page shows each pass with a picture not marked empty, its pictures
   side by side, with buttons for the broad groups (frog, toad, newt, lizard, snake, turtle, other),
   a field for the species name, "Empty" and "Can't tell" under each picture, and a switch to label
   the pictures one by one; for a pass recorded outside pilot mode it marks the model type as a
@@ -260,11 +268,11 @@ test carrying `# spec: <id>`.
   and a malformed model type raises `CardError`.
 
 ## 7. Evaluation
-- [ ] 7.1 Build `read_plan`, `read_bucket_checks`, `evaluate` and the command `trapsort evaluate`,
-  counting a pass as having a usable picture when a person gave any of its pictures a group or a
-  name, and as identified when that name matches the animal the reference names; a run with
-  pictures nobody has looked at is reported as not fully sorted. The report gives the model
-  agreement in total and per model type, from passes recorded in pilot mode only.
+- [ ] 7.1 Build `read_plan`, `evaluate` and the command `trapsort evaluate`, with the bucket
+  matching of 6.3, counting a pass as having a usable picture when a person gave any of its
+  pictures a group or a name, and as identified when that name matches the animal the reference
+  names; a run with pictures nobody has looked at is reported as not fully sorted. The report
+  gives the model agreement in total and per model type, from passes recorded in pilot mode only.
   Tests:
   - `36e16dab` Results of a test run
   - `fb3c43de` An animal in the bucket without a matching picture

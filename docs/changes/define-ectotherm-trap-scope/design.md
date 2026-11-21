@@ -129,9 +129,11 @@ for a mirror or second camera, and the bucket top free.
 The camera controller drops a picture only if the pass was noticed by the PIR sensor alone and the
 picture differs from the day's empty-view picture by less than a set threshold; every pass the
 lasers noticed keeps all its pictures. In pilot mode, set in the trap's configuration file, it
-marks such pictures instead and drops nothing. Entries 23, 29 and 56.
+marks such pictures instead and drops nothing. The difference is the largest over small
+overlapping patches of greyscale thumbnails, as the sorting tool measures it, so that a small
+animal in one place counts as much as a large one. Entries 23, 29, 56 and 125.
 Rejected: judging every picture by its difference from the empty view (could drop animals the
-lasers saw).
+lasers saw); the difference averaged over the whole picture (a 3 cm animal hardly changes it).
 
 ### Records on the card, exported as Camtrap DP
 One CSV file of pass records per survey day, the JPEG pictures in a folder per survey day, a fault
@@ -179,7 +181,9 @@ A Python package with a command line copies a card into a season folder, marks p
 like their survey day's empty view, serves a local review page, and summarises, exports and
 evaluates. The review page shows each pass with a picture not marked empty, its pictures side by
 side; a person picks the broad group (frog, toad, newt, lizard, snake, turtle or other) and adds the
-species name once for the pass, and can mark single pictures empty or "can't tell". For a pass
+species name once for the pass, and can mark single pictures empty or "can't tell". The animals
+found in the bucket during the field phase are matched to passes, and their identifications in the
+hand become labels of those passes (entry 126). For a pass
 recorded outside pilot mode the page suggests the trap's model type; for one recorded in pilot mode
 it hides it. No model runs on the computer; people's labels are kept so that the trap's model keeps
 learning from them. The export gives people's labels, and a pass nobody sorted the model type,
@@ -530,8 +534,9 @@ Decides whether a picture may be dropped; no hardware calls.
 
 ```cpp
 // firmware/camera/lib/filter/filter.h
-/// Mean absolute difference of two greyscale thumbnails of n pixels, from 0 to 1.
-float thumbnail_difference(const uint8_t* a, const uint8_t* b, size_t n);
+/// The largest mean absolute difference of two greyscale thumbnails, width by height pixels row
+/// by row, over patches of 8 by 8 pixels stepping 4, from 0 to 1.
+float thumbnail_difference(const uint8_t* a, const uint8_t* b, size_t width, size_t height);
 
 enum class FilterResult : uint8_t { Keep, Drop, MarkEmpty };
 
@@ -622,6 +627,9 @@ class BenchPlan:
 class BucketChecks:
     """Rows of bucket_checks.csv: the animals found in the bucket at each check."""
 @dataclass
+class BucketMatch:
+    """One animal found in the bucket, with the pass it matches, or None when none does."""
+@dataclass
 class Report:
     """Shares noticed, with a usable picture and identified; missed animals; passes by sensing;
     model agreement in total and per model type, from passes sorted in pilot mode only.
@@ -631,6 +639,12 @@ def read_plan(path: Path) -> BenchPlan:
     """Reads plan.csv; raises PlanError on a malformed row."""
 def read_bucket_checks(path: Path) -> BucketChecks:
     """Reads bucket_checks.csv; raises PlanError on a malformed row."""
+def match_bucket_checks(season: Season, labels: LabelStore,
+                        checks: BucketChecks) -> list[BucketMatch]:
+    """Matches each animal of the season's trap to the earliest unmatched pass since the
+    previous check whose pictures people gave its group; passes that went through come before
+    turned-back ones. trapsort bucket stores the matches as bucket labels; evaluate counts the
+    animals without a match as missed."""
 def evaluate(season: Season, labels: LabelStore,
              reference: BenchPlan | BucketChecks) -> Report:
     """The three outcomes as shares of the animals the reference says passed, the missed
@@ -751,7 +765,8 @@ labels.csv                     people's labels and bucket labels; only ever appe
   `true` or `false`), `unclear` (a picture marked "can't tell"), `bucket` (a name) or
   `bucket_group`. Bucket rows name the pass and leave `picture` empty.
 - `bucket_checks.csv`: `checked_at,trap_id,animal,name,group`, one row per animal found in the
-  bucket during the field phase. An animal matches the earliest unmatched pass since the previous
+  bucket during the field phase, and a row with `animal`, `name` and `group` empty for a check
+  that found nothing; `checked_at` in ISO 8601 with its time zone. An animal matches the earliest unmatched pass since the previous
   check whose pictures show its group; passes that went through come before turned-back ones.
 - The Camtrap DP export: one deployment per trap season, placed at the coordinates in the card's
   `trap.cfg`; one media row per picture; one event-level observation per pass, with
