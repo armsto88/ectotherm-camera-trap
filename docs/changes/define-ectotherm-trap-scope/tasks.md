@@ -164,7 +164,7 @@ test carrying `# spec: <id>`.
   release roles.
 
 ## 5. Bench checks and bench runs
-- [ ] 5.1 Build the bench checks in `bench/checks/` (`BenchRun`, `PlannedPass`, `load_bench_run`,
+- [x] 5.1 Build the bench checks in `bench/checks/` (`BenchRun`, `PlannedPass`, `load_bench_run`,
   `match_plan`), as pytest tests marked `bench`.
   Done when: the checks pair a recorded rig run with its plan, and an unmatched planned passage
   shows as missing.
