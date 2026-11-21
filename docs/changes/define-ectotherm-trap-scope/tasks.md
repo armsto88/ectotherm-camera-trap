@@ -82,7 +82,7 @@ test carrying `# spec: <id>`.
   Tests:
   - `2a4e75f4` An unsigned firmware update is refused
   - `c3876d58` A model that fails its check is refused
-- [ ] 2.10 Change `thumbnail_difference` in `filter` to the largest mean difference over
+- [x] 2.10 Change `thumbnail_difference` in `filter` to the largest mean difference over
   overlapping patches of the thumbnails, as the sorting tool measures it (changes what 2.4 built).
   Tests:
   - `5c654b74` An obviously empty picture is dropped

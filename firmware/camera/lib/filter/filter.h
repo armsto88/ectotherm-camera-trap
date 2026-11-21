@@ -11,9 +11,13 @@
 
 #include "passes.h"
 
-/// Mean absolute difference of two greyscale thumbnails of n pixels, from 0 to 1.
-/// Gives 1 for empty thumbnails, so that a picture that cannot be compared is kept.
-float thumbnail_difference(const uint8_t* a, const uint8_t* b, size_t n);
+/// The largest mean absolute difference of two greyscale thumbnails, width by height pixels row
+/// by row, over patches of 8 by 8 pixels stepping 4 (the whole thumbnail along a side shorter
+/// than 8), from 0 to 1. Patch by patch, a small animal in one place counts as much as a large
+/// one: a 3 cm animal covers about one percent of the view, which a difference averaged over the
+/// whole picture would miss. Gives 1 for empty thumbnails, so that a picture that cannot be
+/// compared is kept.
+float thumbnail_difference(const uint8_t* a, const uint8_t* b, size_t width, size_t height);
 
 enum class FilterResult : uint8_t { Keep, Drop, MarkEmpty };
 
