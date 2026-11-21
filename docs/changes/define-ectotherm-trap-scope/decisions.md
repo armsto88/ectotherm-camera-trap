@@ -1559,3 +1559,60 @@
 - **Reason:** The user wants bench-tested hardware, enough to pitch a fully formed idea, before
   anything else; the sorting tool and the trap's logic that read and write its records are built.
 - **Rejected:** Finishing the tasks that need only a computer first, as chosen until now.
+
+## 139. Which board is the prototype's camera controller?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The user's ESP32-S3-WROOM camera board, with a microSD slot and a 24-pin camera
+  connector; that it has PSRAM (a module marked N8R8 or N16R8) and that its camera supply feeds an
+  OV5640 are checked at bring-up.
+- **Reason:** It is at hand and carries the camera connector and card slot the chain needs.
+- **Rejected:** Buying another ESP32-S3 camera board before the one at hand is checked.
+
+## 140. What follows if the ESP32-S3 is too slow for the model?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The first board still gets no helper chip for models; its traps go out without the
+  model and get it by update, and a later board revision may add a helper chip. The prototype's
+  measurement tells this before the first board, as entries 74, 99 and 137 read together.
+- **Reason:** Entry 74 allows a helper chip only with a later board revision, and the proposal
+  keeps it out of scope; measuring early tells whether the first boards' traps run the model.
+- **Rejected:** A helper chip on the first board when the test fails (against entry 74 and the
+  proposal's scope).
+
+## 141. How does the firmware run on the prototype?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The watcher and camera firmware projects each gain an environment for the
+  development boards, with that board's pins in one header; the trap's own boards get their own
+  environments later.
+- **Reason:** Entry 130 chose the trap's chips so that the firmware carries over; only pins differ.
+- **Rejected:** Separate firmware for the prototype (written twice).
+
+## 142. Where are the prototype's parts and wiring written down?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** In `hardware/prototype/`: the parts list, the wiring list and the bring-up
+  checklist.
+- **Reason:** Next to the insert and the boards, where the trap's hardware lives.
+- **Rejected:** In `docs/testing/` (that folder holds procedures and results, not hardware).
+
+## 143. How is the battery sized before the trap's own board exists?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** From the parts' currents and the energy of a pass, a picture and a model run
+  measured on the prototype, plus Auris's estimate for a daily send at its upper end, 13 mAh; the
+  energy per send is measured on the trap's own board.
+- **Reason:** The modem is first tried on the trap's own board (entry 132), so a send cannot be
+  measured before it; the upper end of the estimate keeps a margin.
+- **Rejected:** Sizing the battery only after the trap's own board runs.
+
+## 144. Which OV5640 module goes on the prototype?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The user's own OV5640 5 MP module, once bring-up shows that it fits the board's
+  24-pin connector and has no infrared filter (it sees an infrared remote control's light); if it
+  fails either, one without filter for the 24-pin connector is ordered.
+- **Reason:** The user already has an OV5640 module; many come with an infrared filter, which would
+  blind the camera to its own infrared flash.
+- **Replaces:** 136 in part (the module the user orders becomes the user's own, if it passes).

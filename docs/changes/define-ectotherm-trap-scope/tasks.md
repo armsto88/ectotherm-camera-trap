@@ -94,41 +94,56 @@ test carrying `# spec: <id>`.
 - [ ] 3.1 Write the insert script in `hardware/insert/`: a passage 15 cm wide across a bucket of
   about 30 cm diameter, the floor flush with the ground at both ends, beam walls with beam holes at
   4, 12 and 25 mm at a point about 2 cm inside each end, a camera mount that can be set between
-  about 20 and 30 cm above the floor, a mount for a roof laser, a slot for a side view, and bays for
-  the boards and cells.
+  about 20 and 30 cm above the floor, a mount for a roof laser, a slot for a side view, bays for the
+  trap's own boards and cells, and an opening for the prototype's cables.
   Done when: `freecadcmd` generates the STL files for two bucket sizes, and a printed insert fits a
   20 litre bucket with the fence ends meeting its openings.
-- [ ] 3.2 Draw and build the boards in EasyEDA: one beam board per wall (three 940 nm laser diodes
-  or three photodiodes) and the main board (ATtiny3216, ESP32-S3 module with enough flash for two
-  firmware slots and the model, a 24-pin camera connector and an SPI camera header so that either
-  kind of camera module plugs in, infrared LEDs and driver with one footprint for 940 nm or 850 nm
-  LEDs, PIR sensor, DS3231 clock, microSD slot, the FieldHub's CN3791 charger with a thermistor that
-  stops charging below 0 °C, a holder for two 18650 cells, and Auris's modem design: a Quectel
-  EG810M-EU on a switched 3.9 V TPS63020 rail, a nano-SIM holder and an SMA socket for the antenna
-  cable to the panel stake); every chip one JLCPCB can assemble, from LCSC's stock where it has it;
-  keep the exports in `hardware/boards/` with a bring-up checklist.
+- [ ] 3.2 After the bench tests on the prototype (5.2 to 5.7, 5.9, 5.10 and 7.2), draw and build the
+  trap's own boards in EasyEDA from their results: one beam board per wall (three 940 nm laser
+  diodes or three photodiodes) and the main board (ATtiny3216, ESP32-S3 module with enough flash for
+  two firmware slots and the model, a 24-pin camera connector and an SPI camera header so that
+  either kind of camera module plugs in, infrared LEDs and driver with one footprint for 940 nm or
+  850 nm LEDs, PIR sensor, DS3231 clock, microSD slot, the FieldHub's CN3791 charger with a
+  thermistor that stops charging below 0 °C, a holder for two 18650 cells, and Auris's modem design:
+  a Quectel EG810M-EU on a switched 3.9 V TPS63020 rail, a nano-SIM holder and an SMA socket for the
+  antenna cable to the panel stake); every chip one JLCPCB can assemble, from LCSC's stock where it
+  has it; keep the exports in `hardware/boards/` with a bring-up checklist.
   Done when: the boards are assembled and every part answers on the bring-up checklist.
 - [ ] 3.3 Build the model-animal rig in `bench/rig/`: a belt that pulls model animals along the
   passage floor at the speeds of a `plan.csv`, a light box for darkness and daylight, a
   visible-light sensor in the passage, and model animals (flat 3 cm, taller than the second beam,
   mouse-sized and warmed, and at room temperature).
   Done when: the rig runs a `plan.csv` and logs the time of each planned passage.
+- [ ] 3.4 Build the prototype on development boards and write its parts list, wiring list and
+  bring-up checklist in `hardware/prototype/`: the ESP32-S3-WROOM camera board with its microSD
+  slot and an OV5640 module without infrared filter, an ATtiny3216 on a SOIC-20 adapter board
+  programmed over UPDI, laser diodes and photodiodes on strip board in the printed beam walls,
+  infrared LEDs and their driver for 940 or 850 nm, a PIR sensor module and a DS3231 clock module,
+  the boards outside the bucket and wired in; add a `prototype` environment with the boards' pins in
+  `include/board_prototype.h` to both firmware projects. The checklist brings the camera board up
+  first with the user's OV2640, a camera known to work on such boards, and then with the OV5640, so
+  that a fault of the OV5640 is not taken for one of the board; no bench result comes from the
+  OV2640.
+  Done when: every part answers on the bring-up checklist, including the camera board's PSRAM, an
+  OV2640 picture saved to its card, the user's OV5640 module fitting its connector and seeing an
+  infrared remote control's light (or one without infrared filter ordered, entry 144), and an
+  OV5640 picture saved to its card.
 
-## 4. Firmware on the boards
+## 4. Firmware on the prototype and the boards
 - [ ] 4.1 Write the watcher firmware in `firmware/watcher/`: pulse each laser 250 times a second,
   read the PIR sensor, keep crossings in a buffer, raise the wake line, answer on I2C as `link.h`
   describes, and sleep between pulses.
-  Done when: a hand breaking a beam wakes the camera controller, and the crossing it reads back has
-  the right point and heights.
+  Done when: on the prototype, a hand breaking a beam wakes the camera controller, and the crossing
+  it reads back has the right point and heights.
 - [ ] 4.2 Write the pass capture in `firmware/camera/`: wake, read crossings and status, map the
   watcher clock onto the clock chip, build passes, take the picture burst with the infrared flash
   and fixed exposure, apply the filter, write pictures and pass records, and read `trap.cfg`,
   including pilot mode and the coordinates.
-  Done when: an object passed through by hand leaves a row in the survey day's pass file and its
-  pictures on the card.
-- [ ] 4.3 Write the daily jobs: the empty-view picture, taken once the passage is empty, the state
-  summary with the coordinates from `trap.cfg`, and the fault log for blocked beams, low battery,
-  low storage and camera failures.
+  Done when: on the prototype, an object passed through by hand leaves a row in the survey day's
+  pass file and its pictures on the card.
+- [ ] 4.3 Write the daily jobs, run on the prototype: the empty-view picture, taken once the passage
+  is empty, the state summary with the coordinates from `trap.cfg`, and the fault log for blocked
+  beams, low battery, low storage and camera failures.
   Tests:
   - `5bcc1dab` The daily picture is taken
   - `cc78920a` An animal is in the passage at the time of the daily picture
@@ -143,15 +158,17 @@ test carrying `# spec: <id>`.
   - `be4d4900` The model deletes nothing
   - `cc5f8062` A signed model arrives
   - `28f560d3` A model that does not load
-  Done when: on the bench a trap with a test model types passes of model animals, and a model file
-  with a broken signature or a broken body leaves the trap recording without one.
-- [ ] 4.5 Write the EG810M-EU driver and the send job: power the modem rail after the daily summary,
+  Done when: on the prototype a test model types passes of model animals, and a model file with a
+  broken signature or a broken body leaves the trap recording without one.
+- [ ] 4.5 On the trap's own boards (3.2), write the EG810M-EU driver and the send job: power the
+  modem rail after the daily summary,
   register with the APN from `link.cfg`, upload over HTTPS with FieldMesh's certificate checked,
   follow `uplink`, set the clock from the reply, give up after `link_timeout_s`, and record link
   faults; move `link.cfg` into flash at first start.
   Tests:
   - `a9ce007a` No network found
-  Done when: a bench trap with a SIM sends a day's passes and summary to a FieldMesh test project,
+  Done when: a trap on its own board with a SIM sends a day's passes and summary to a FieldMesh
+  test project,
   FieldMesh shows them, and a trap in a shielded box records a link fault and keeps recording.
 - [ ] 4.6 Take settings and updates from FieldMesh's replies: apply trap settings commands and
   report their results; download, check and install firmware into the spare slot with the
@@ -159,8 +176,8 @@ test carrying `# spec: <id>`.
   Tests:
   - `75d2c838` A signed firmware update is installed
   - `0352d927` A failed update falls back
-  Done when: on an ESP32-S3 bench trap a signed update installs and a deliberately broken one falls
-  back, against a FieldMesh test project or a local stand-in until FieldMesh has the trap's
+  Done when: on a trap on its own board a signed update installs and a deliberately broken one
+  falls back, against a FieldMesh test project or a local stand-in until FieldMesh has the trap's
   release roles.
 
 ## 5. Bench checks and bench runs
@@ -168,8 +185,9 @@ test carrying `# spec: <id>`.
   `match_plan`), as pytest tests marked `bench`.
   Done when: the checks pair a recorded rig run with its plan, and an unmatched planned passage
   shows as missing.
-- [ ] 5.2 Run and check the detection runs: temperatures, sizes, darkness and daylight, beam
-  heights, a blocked lowest beam, cold and warm model animals, and a mouse-sized model.
+- [ ] 5.2 On the prototype, run and check the detection runs: temperatures, sizes, darkness and
+  daylight, beam heights, a blocked lowest beam, cold and warm model animals, and a mouse-sized
+  model.
   Tests:
   - `172ed05c` An animal as warm as its surroundings crosses a beam point
   - `808cb65b` A flat 3 cm animal crosses along the floor
@@ -180,44 +198,50 @@ test carrying `# spec: <id>`.
   - `dd5a2678` Only the lasers notice a cold animal
   - `58ebb8e3` Only the PIR sensor notices a warm animal
   - `abc0c8ed` A mouse passes through
-- [ ] 5.3 Run and check the picture runs, with known animals for the expert check.
+- [ ] 5.3 On the prototype, run and check the picture runs, with known animals for the expert check.
   Tests:
   - `0f31246f` An animal walking through is photographed
   - `4d3defba` The same animal at noon and at midnight
   - `d3749ed6` An expert names a known animal from its picture
   - `64488b5b` Pictures taken without visible light
-- [ ] 5.4 Measure the camera's wake time against the target speeds; if too few passes at walking
-  speed get a picture with the animal in view, keep the camera on standby (entry 58).
+- [ ] 5.4 On the prototype, measure the camera's wake time against the target speeds; if too few
+  passes at walking speed get a picture with the animal in view, keep the camera on standby (entry
+  58).
   Done when: wake times and the share of passes with an in-view picture per speed are in
   `docs/testing/bench-results.md`, and the standby choice is logged in `decisions.md`.
-- [ ] 5.5 Test the roof laser against blocked beams and power use (entry 35).
+- [ ] 5.5 On the prototype, test the roof laser against blocked beams and power use (entry 35).
   Done when: the results are in `docs/testing/bench-results.md` and keeping or dropping the roof
   laser is logged in `decisions.md`.
-- [ ] 5.6 Test a side view, colour and the infrared wavelength with known animals (entries 37, 38
-  and 77): identification from above alone, with a mirror and with a second camera; how warm the
-  passage gets with daylight through the top; whether a short white light makes animals turn back
-  or hurry; and 940 against 850 nm LEDs for picture quality, power and whether animals react to the
-  faint glow of 850 nm.
+- [ ] 5.6 On the prototype, test a side view, colour and the infrared wavelength with known animals
+  (entries 37, 38 and 77): identification from above alone, with a mirror and with a second camera;
+  how warm the passage gets with daylight through the top; whether a short white light makes animals
+  turn back or hurry; and 940 against 850 nm LEDs for picture quality, power and whether animals
+  react to the faint glow of 850 nm.
   Done when: the results are in `docs/testing/bench-results.md` and the choices are logged in
   `decisions.md`.
-- [ ] 5.7 Measure power use, picture sizes and what the link sends, and replace the design's
-  estimates.
-  Done when: measured currents, energy per pass, per model run and per send in good and weak
-  coverage, picture sizes and data sent per day are in `docs/testing/bench-results.md`, and the
-  pack is sized to the measured season budget, larger than two 18650 cells if needed (entries 77,
-  94 and 116).
-- [ ] 5.8 Run a trap for four weeks at the expected load with no connection, and extrapolate its
-  charge use to six months; the field phase confirms it.
+- [ ] 5.7 On the prototype, measure each part's current, the energy of a pass, a picture and a model
+  run, and picture sizes, and replace the design's estimates; size the pack from them with Auris's
+  13 mAh for a daily send (entries 133 and 143).
+  Done when: the measured currents, energies and picture sizes are in
+  `docs/testing/bench-results.md`, and the pack is sized to the season budget, larger than two 18650
+  cells if needed (entries 77, 94 and 116).
+- [ ] 5.8 On the trap's own boards, measure the energy of a send in good and weak coverage and the
+  data sent per day, then run a trap for four weeks at the expected load with no connection, and
+  extrapolate its charge use to six months; the field phase confirms it.
   Tests:
   - `d6bcd7cb` Six months at the expected load
   - `40ee900d` A trap where there is no coverage
-- [ ] 5.9 Choose the camera module, its lens and the camera's height (entry 76): compare a module
-  with a ribbon cable and one with a screw-in M12 lens, at about 20, 25 and 30 cm above the floor,
-  with model animals of different heights, by darkness and by day, focusing each lens once and
-  fixing it.
+- [ ] 5.9 On the prototype, choose the camera module, its lens and the camera's height (entry 76):
+  compare a module with a ribbon cable and one with a screw-in M12 lens, at about 20, 25 and 30 cm
+  above the floor, with model animals of different heights, by darkness and by day, focusing each
+  lens once and fixing it.
   Done when: sharpness at the floor and on the tallest model animal, pixels per millimetre and the
   light needed are in `docs/testing/bench-results.md` for each setup, and the choice is logged in
   `decisions.md`.
+- [ ] 5.10 On the prototype, measure a test model's time and energy per picture with TensorFlow Lite
+  Micro on the ESP32-S3 (entries 137 and 140).
+  Done when: the times and energies are in `docs/testing/bench-results.md`, and whether the first
+  boards' traps run the model is logged in `decisions.md`.
 
 ## 6. Sorting tool
 - [x] 6.1 Build the `trapsort` package with its types in `model.py`, `read_card` and the command
@@ -281,7 +305,8 @@ test carrying `# spec: <id>`.
   - `9426c4fa` Model agreement of a test run
   - `d7c82910` Passes sorted with the suggestion shown
 - [ ] 7.2 Write the controlled-test plan in `docs/testing/controlled-tests.md` with its `plan.csv`
-  files, run it on the rig with model and known animals, and report the three outcomes.
+  files, run it on the prototype on the rig with model and known animals, and report the three
+  outcomes.
   Tests:
   - `b0c045b3` Model animals across sizes and speeds
 - [ ] 7.3 Write `docs/testing/targets.md` from the controlled-test results, dated, with targets for
@@ -332,3 +357,9 @@ test carrying `# spec: <id>`.
   and the release of a model over the link need the FieldMesh changes of entry 111.
 - 2026-11-21: 6.6 is built right after 6.5, before 6.2, since 6.3 and 6.4 take the pilot flag and
   the model's columns it reads.
+- 2026-11-21: The change went back through discuss and propose (entries 129 to 143): the whole
+  chain is proven on development boards before the trap's own boards are drawn, and that work comes
+  first. Tasks are built in this order: 3.1, 3.3, 3.4, 4.1 to 4.4, 5.2 to 5.7, 5.9, 5.10, 7.2 and
+  7.3 on the prototype; then 3.2, 4.5, 4.6 and 5.8 on the trap's own boards; then 8.1, 9.1 and
+  9.2. Task 3.4 and 5.10 are new; 3.1, 3.2, 4.1 to 4.6, 5.2 to 5.9 and 7.2 were rewritten before
+  being built. The order chosen on 2026-11-20, computer tasks first, no longer holds.

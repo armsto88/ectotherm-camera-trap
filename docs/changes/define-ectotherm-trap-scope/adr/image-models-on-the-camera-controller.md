@@ -22,8 +22,9 @@ traps already in the field.
 The ESP32-S3 runs the model with TensorFlow Lite Micro after each pass. The model is a separate
 file on the memory card with a manifest signed with the release key, loaded at start and checked
 before use; without a valid model the trap records as before, with the type left empty. The model
-only labels and never deletes pictures. A separate chip for models comes only with a later board
-revision, and only if a test shows the ESP32-S3 is not enough.
+only labels and never deletes pictures. A model's time per picture is measured on the prototype
+before the first board. A separate chip for models comes only with a later board revision, and only
+if that test shows the ESP32-S3 is not enough; until then the trap goes without the model.
 
 ## Consequences
 - A model needs no new hardware, and a new model needs no new firmware.

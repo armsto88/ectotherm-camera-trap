@@ -62,9 +62,11 @@ gets the surest animal type when any picture's animal score reaches a minimum, o
 score is how sure the model is. Type, score and model version go into the pass record; the model
 deletes nothing, and the filter alone decides what is kept. The model is a file on the card,
 `model/model.tflite` with its signed manifest, loaded at start; without one, or when it fails its
-check or does not load, the type stays empty and the trap records as before. A separate chip for
-models comes only with a later board revision, if a test shows the ESP32-S3 is not enough. Entries
-74, 93, 96, 97, 99, 102, 106 and 117; [ADR](adr/image-models-on-the-camera-controller.md).
+check or does not load, the type stays empty and the trap records as before. A test model's time
+per picture is measured on the prototype before the first board; if the ESP32-S3 is too slow, the
+first board still has no helper chip, its traps go out without the model, and a later board
+revision may add one. Entries 74, 93, 96, 97, 99, 102, 106, 117, 137 and 140;
+[ADR](adr/image-models-on-the-camera-controller.md).
 Rejected: ESP-DL (needs ESP-IDF); the model built into the firmware; the model dropping pictures; a
 helper chip such as the MAX78000 or a vision chip such as the STM32N6.
 
@@ -119,11 +121,29 @@ otherwise ordered in through JLCPCB's global sourcing. Plug-in parts such as the
 the cells may come from anywhere. Entries 72 and 73; [ADR](adr/chips-assembled-by-jlcpcb.md).
 Rejected: LCSC's stock only (rules out most chips for image models; thin stock of some parts).
 
+### The hardware is proven on development boards first
+Before the trap's own boards are drawn, the whole chain runs on ready-made development boards with
+the trap's chips: the user's ESP32-S3-WROOM camera board with its microSD slot and an OV5640 module
+without infrared filter, an ATtiny3216 on a SOIC-20 adapter board programmed over UPDI, laser
+diodes and photodiodes on strip board in the printed beam walls, infrared LEDs with their driver, a
+PIR sensor module and a DS3231 clock module. The insert holds the beam walls and the camera; the
+boards sit outside the bucket, wired in. Every bench test runs on it, the controlled tests, the roof
+laser, a side view and colour included, and so does a test model's time per picture; the battery is
+sized from the parts' measured currents. The modem, after the Auris design, and the four-week run
+for the season come with the trap's own boards. Each firmware project gains a `prototype`
+environment with the board's pins in one header; the parts list, wiring list and bring-up checklist
+are in `hardware/prototype/`. Entries 129 to 144;
+[ADR](adr/hardware-proven-on-development-boards.md).
+Rejected: the trap's own boards first, with the bench tests on them; separate rigs for the risky
+parts; the quickest boards at hand, such as the old prototype's; the user's OV5647 Raspberry Pi
+camera, which the ESP32-S3 cannot take; the modem on an evaluation board.
+
 ### What the bench decides
 The roof laser (entry 35), a side view by mirror or second camera (entry 37) and colour by daylight
-through the top or by a short white light at the end of a pass (entry 38) are tested in the
-controlled tests. The insert leaves a mount above the passage for a roof laser, a slot in one wall
-for a mirror or second camera, and the bucket top free.
+through the top or by a short white light at the end of a pass (entry 38) are tested on the
+prototype before the trap's own boards are drawn (entry 131). The insert leaves a mount above the
+passage for a roof laser, a slot in one wall for a mirror or second camera, and the bucket top
+free.
 
 ### The filter on the trap
 The camera controller drops a picture only if the pass was noticed by the PIR sensor alone and the
@@ -157,9 +177,11 @@ Rejected: a FieldMesh node over ESP-NOW (needs a hub on every site); the aux1 an
 A 6 V solar panel of about 1 W on a short stake beside the trap charges two 18650 cells in parallel
 (about 7 Ah) through the FieldHub's CN3791 charger design, with charging stopped below 0 °C by a
 thermistor on the pack. The stake also carries the modem's antenna. The design plans for 200
-passes a day, a daily send and a model run per pass; see the power estimate below. If the bench
-measures more, the pack grows rather than features shrinking. Entries 42, 46, 52, 61, 77, 94 and
-116.
+passes a day, a daily send and a model run per pass; see the power estimate below. The pack is
+sized before the trap's own board from the parts' currents measured on the prototype and Auris's
+upper estimate of 13 mAh for a daily send; a send is measured on the trap's own board. If the bench
+measures more, the pack grows rather than features shrinking. Entries 42, 46, 52, 61, 77, 94, 116,
+133 and 143.
 Rejected: a 12 Ah pack without solar; lithium AA cells; a panel on the bucket top or a fence post;
 one cell; three or four cells before the load is measured.
 
@@ -200,9 +222,9 @@ One FieldMesh issue collects them:
 
 ### Three levels of tests
 Unit tests on the computer for firmware logic and the sorting tool; bench runs with a model-animal
-rig whose records are checked by pytest scripts marked `bench`; and written check procedures in
-`docs/testing/` for what only a person can check. Every test names its scenario with
-`spec: <id>`. Entry 64; [ADR](adr/three-levels-of-tests.md).
+rig, first on the prototype, whose records are checked by pytest scripts marked `bench`; and
+written check procedures in `docs/testing/` for what only a person can check. Every test names its
+scenario with `spec: <id>`. Entries 64 and 131; [ADR](adr/three-levels-of-tests.md).
 Rejected: unit tests only.
 
 ### The prototype moves aside
@@ -211,7 +233,8 @@ Rejected: unit tests only.
 Rejected: leaving them at the top.
 
 ## Power and storage estimate
-Estimates to be replaced by bench measurements (task 5.2):
+Estimates, replaced by the prototype's measurements (task 5.7) and, for a send and the season, by
+the trap's own board (task 5.8):
 
 | Part | Estimate |
 |---|---|
@@ -770,8 +793,9 @@ datapackage.json               the Camtrap DP export, with deployments.csv, medi
   `bucket_group`. Bucket rows name the pass and leave `picture` empty.
 - `bucket_checks.csv`: `checked_at,trap_id,animal,name,group`, one row per animal found in the
   bucket during the field phase, and a row with `animal`, `name` and `group` empty for a check
-  that found nothing; `checked_at` in ISO 8601 with its time zone. An animal matches the earliest unmatched pass since the previous
-  check whose pictures show its group; passes that went through come before turned-back ones.
+  that found nothing; `checked_at` in ISO 8601 with its time zone. An animal matches the earliest
+  unmatched pass since the previous check whose pictures show its group; passes that went through
+  come before turned-back ones.
 - The Camtrap DP export (version 1.0.1), in the season folder so that each picture is named as
   `card/pictures/<day>/<file>` (entry 128), with the project title and contact typed at the
   export (entry 127): one deployment per trap season, placed at the coordinates in the card's
@@ -802,6 +826,9 @@ next to a copy of the trap's card from that run.
 - `bench/rig/`: the model-animal rig (a belt pulling model animals along the floor at set speeds)
 - `bench/checks/`: pytest checks on bench runs
 - `hardware/insert/`: the FreeCAD script and generated STL files
+- `hardware/prototype/`: the prototype's parts list, wiring list and bring-up checklist
+- `firmware/watcher/` and `firmware/camera/`: a `prototype` environment each in `platformio.ini`,
+  with the development boards' pins in `include/board_prototype.h`
 - `hardware/boards/`: EasyEDA exports of the watcher and beam boards and the main board, with the
   modem
 - `docs/testing/`: written check procedures, the controlled-test plan and the field-phase procedure
