@@ -427,6 +427,132 @@ static void test_confirmed_days_are_skipped() {
   TEST_ASSERT_FALSE(plan.next(&place));
 }
 
+static TrapConfig trap_settings() {
+  TrapConfig c;
+  strcpy(c.trap_id, "ECT_0A1B2C");
+  return c;
+}
+
+// spec: ca7e69c7
+static void test_new_settings_arrive() {
+  // FieldMesh's reply to a send carries new settings for the trap.
+  static Reply reply;
+  TEST_ASSERT_TRUE(parse_reply(
+      "{\"success\":true,\"received\":4,\"nextCursor\":57,\"serverTimeUnix\":1778760000,"
+      "\"commands\":[{\"commandId\":\"Kq7wT2mZ\",\"sequence\":57,\"type\":\"SET_TRAP_CONFIG\","
+      "\"payload\":{\"send_every_h\":6,\"pilot_mode\":false,\"side_a\":\"pond side\","
+      "\"placement\":\"end\",\"latitude\":49.4521,\"longitude\":7.7541,"
+      "\"drop_threshold\":0.04}}]}",
+      &reply));
+  const TrapConfig before = trap_settings();
+  TrapConfig after;
+  char reason[64];
+  TEST_ASSERT_EQUAL(CommandResult::Accepted, apply_settings(reply.commands[0].payload, before,
+                                                            &after, reason, sizeof reason));
+  TEST_ASSERT_EQUAL(6, after.send_every_h);
+  TEST_ASSERT_FALSE(after.pilot_mode);
+  TEST_ASSERT_EQUAL_STRING("pond side", after.side_a);
+  TEST_ASSERT_EQUAL(Placement::End, after.placement);
+  TEST_ASSERT_EQUAL_FLOAT(49.4521f, after.latitude);
+  TEST_ASSERT_EQUAL_FLOAT(0.04f, after.drop_threshold);
+  TEST_ASSERT_EQUAL_STRING("ECT_0A1B2C", after.trap_id);
+  TEST_ASSERT_EQUAL(2, after.config_version);
+
+  // Kept on the memory card: written as trap.cfg, it reads back to the same settings.
+  char cfg[512];
+  TEST_ASSERT_TRUE(config_text(after, cfg, sizeof cfg) > 0);
+  TrapConfig kept;
+  TEST_ASSERT_TRUE(parse_config(cfg, &kept));
+  TEST_ASSERT_EQUAL(6, kept.send_every_h);
+  TEST_ASSERT_EQUAL(2, kept.config_version);
+
+  // Used from then on: the next send comes six hours later, and readings name the new version.
+  TEST_ASSERT_EQUAL(1778760000u + 6 * 3600, next_send(1778760000, kept));
+  StateSummary s{1778846400, 2, 3.9f, 15.0f, 0, 90000, true};
+  char line[512];
+  TEST_ASSERT_TRUE(summary_json(s, kept, line, sizeof line) > 0);
+  TEST_ASSERT_NOT_NULL(strstr(line, "\"configVersion\":2,"));
+
+  // The next send tells FieldMesh that the trap took them.
+  const CommandReport report{"Kq7wT2mZ", CommandResult::Accepted};
+  char status[256];
+  TEST_ASSERT_TRUE(control_status_json(reply.commands[0].cursor, kept.config_version, &report, 1,
+                                       status, sizeof status) > 0);
+  TEST_ASSERT_EQUAL_STRING(
+      "{\"controlProtocolVersion\":2,\"stateRevision\":2,\"lastCommandCursor\":57,"
+      "\"results\":[{\"cmdId\":\"Kq7wT2mZ\",\"outcome\":\"ACCEPTED\",\"revision\":2}]}",
+      status);
+}
+
+// spec: 356af091
+static void test_invalid_settings_are_refused() {
+  const TrapConfig before = trap_settings();
+  const char* refused[] = {
+      "{\"send_every_h\":0}",                          // out of range
+      "{\"send_every_h\":6,\"link_timeout_s\":1000}",  // one valid, one out of range
+      "{\"latitude\":91}",
+      "{\"placement\":\"middle\"}",
+      "{\"send_every_h\":6.5}",
+      "{\"pilotmode\":false}",                         // unknown, such as a typo
+      "{\"trap_id\":\"ECT_OTHER\"}",                   // the trap's name in FieldMesh
+      "{\"config_version\":9}",
+      "{\"side_a\":\"pond\\nsend_every_h=1\"}",         // a second line smuggled in
+      "{\"side_a\":\"a|b\"}",
+      "{\"latitude\":null}",
+      "{\"send_every_h\":[6]}",
+      "{\"send_every_h=1\\npilot_mode\":true}",
+      "[1]",
+      "not json",
+  };
+  for (const char* payload : refused) {
+    TrapConfig after;
+    after.send_every_h = 99;  // shows whether out is set back to the old settings
+    char reason[64] = "";
+    TEST_ASSERT_EQUAL_MESSAGE(CommandResult::Rejected,
+                              apply_settings(payload, before, &after, reason, sizeof reason),
+                              payload);
+    TEST_ASSERT_EQUAL_MESSAGE(24, after.send_every_h, payload);
+    TEST_ASSERT_EQUAL(1, after.config_version);
+    TEST_ASSERT_TRUE_MESSAGE(reason[0] != '\0', payload);
+  }
+  char reason[64];
+  TrapConfig after;
+  apply_settings("{\"send_every_h\":6,\"link_timeout_s\":1000}", before, &after, reason,
+                 sizeof reason);
+  TEST_ASSERT_EQUAL_STRING("link_timeout_s is unknown or out of range", reason);
+
+  // The next send tells FieldMesh that the trap refused them.
+  const CommandReport report{"Lr8xU3nA", CommandResult::Rejected};
+  char status[256];
+  TEST_ASSERT_TRUE(control_status_json(58, before.config_version, &report, 1, status,
+                                       sizeof status) > 0);
+  TEST_ASSERT_NOT_NULL(strstr(status, "{\"cmdId\":\"Lr8xU3nA\",\"outcome\":\"INVALID\""));
+  TEST_ASSERT_NOT_NULL(strstr(status, "\"stateRevision\":1,"));
+}
+
+static void test_settings_as_text_and_the_version_wraps() {
+  TrapConfig c = trap_settings();
+  c.config_version = UINT16_MAX;
+  TrapConfig after;
+  char reason[64];
+  TEST_ASSERT_EQUAL(CommandResult::Accepted,
+                    apply_settings("{\"send_every_h\":\"12\",\"pilot_mode\":\"0\"}", c, &after,
+                                   reason, sizeof reason));
+  TEST_ASSERT_EQUAL(12, after.send_every_h);
+  TEST_ASSERT_FALSE(after.pilot_mode);
+  TEST_ASSERT_EQUAL(1, after.config_version);
+
+  // No commands since the last send: an empty list of results.
+  char status[128];
+  TEST_ASSERT_TRUE(control_status_json(0, 1, nullptr, 0, status, sizeof status) > 0);
+  TEST_ASSERT_EQUAL_STRING(
+      "{\"controlProtocolVersion\":2,\"stateRevision\":1,\"lastCommandCursor\":0,"
+      "\"results\":[]}",
+      status);
+  TEST_ASSERT_EQUAL(0, control_status_json(0, 1, nullptr, 0, status, 20));
+  TEST_ASSERT_EQUAL_STRING("", status);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_the_days_results_are_sent);
@@ -444,5 +570,8 @@ int main() {
   RUN_TEST(test_the_sent_position_reads_back);
   RUN_TEST(test_a_full_plan_keeps_the_earliest_days);
   RUN_TEST(test_confirmed_days_are_skipped);
+  RUN_TEST(test_new_settings_arrive);
+  RUN_TEST(test_invalid_settings_are_refused);
+  RUN_TEST(test_settings_as_text_and_the_version_wraps);
   return UNITY_END();
 }

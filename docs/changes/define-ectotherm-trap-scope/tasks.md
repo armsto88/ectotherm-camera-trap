@@ -72,7 +72,7 @@ test carrying `# spec: <id>`.
   - `81b45c6f` The clock has drifted
   Done when: unit tests with recorded FieldMesh replies show a batch confirmed only on a full count,
   the position kept on a failed send, and the summary last in each send.
-- [ ] 2.8 Add trap settings commands to `uplink`: `Command`, `CommandResult` and `apply_settings`,
+- [x] 2.8 Add trap settings commands to `uplink`: `Command`, `CommandResult` and `apply_settings`,
   checking a command's settings by the rules of `parse_config`.
   Tests:
   - `ca7e69c7` New settings arrive

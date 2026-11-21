@@ -250,6 +250,72 @@ bool parse_reply(const char* json, Reply* out) {
   return true;
 }
 
+CommandResult apply_settings(const char* payload, const TrapConfig& c, TrapConfig* out,
+                             char* reason, size_t reason_size) {
+  *out = c;
+  auto refuse = [&](const char* format, const char* key) {
+    snprintf(reason, reason_size, format, key);
+    return CommandResult::Rejected;
+  };
+  JsonDocument doc;
+  if (!payload || deserializeJson(doc, payload) || !doc.is<JsonObject>())
+    return refuse("%s", "the settings are not a JSON object");
+
+  TrapConfig next = c;
+  for (JsonPair kv : doc.as<JsonObject>()) {
+    const char* key = kv.key().c_str();
+    if (!key[0] || strspn(key, "abcdefghijklmnopqrstuvwxyz_") != strlen(key))
+      return refuse("%s is not a setting", key);
+    if (strcmp(key, "trap_id") == 0 || strcmp(key, "config_version") == 0)
+      return refuse("%s is not set over the link", key);
+
+    // Each setting as a trap.cfg line, read by the same rules as the file.
+    char value[64];
+    const JsonVariant v = kv.value();
+    if (v.is<bool>()) {
+      snprintf(value, sizeof value, "%s", v.as<bool>() ? "true" : "false");
+    } else if (v.is<long>()) {
+      snprintf(value, sizeof value, "%ld", v.as<long>());
+    } else if (v.is<double>()) {
+      snprintf(value, sizeof value, "%.9g", v.as<double>());
+    } else if (v.is<const char*>()) {
+      const char* text = v.as<const char*>();
+      if (strpbrk(text, "\r\n") || strlen(text) >= sizeof value)
+        return refuse("%s has a value that cannot be a setting", key);
+      snprintf(value, sizeof value, "%s", text);
+    } else {
+      return refuse("%s has a value that cannot be a setting", key);
+    }
+    char line[96];
+    snprintf(line, sizeof line, "%s=%s\n", key, value);
+    if (!parse_config(line, &next)) return refuse("%s is unknown or out of range", key);
+  }
+  next.config_version = c.config_version == UINT16_MAX ? 1 : c.config_version + 1;
+  *out = next;
+  if (reason_size > 0) reason[0] = '\0';
+  return CommandResult::Accepted;
+}
+
+size_t control_status_json(uint32_t last_cursor, uint16_t config_version,
+                           const CommandReport* reports, size_t n, char* out, size_t size) {
+  JsonDocument doc;
+  doc["controlProtocolVersion"] = 2;
+  doc["stateRevision"] = config_version;
+  doc["lastCommandCursor"] = last_cursor;
+  JsonArray results = doc["results"].to<JsonArray>();
+  for (size_t i = 0; i < n; ++i) {
+    JsonObject r = results.add<JsonObject>();
+    r["cmdId"] = reports[i].id;
+    r["outcome"] = reports[i].result == CommandResult::Accepted ? "ACCEPTED" : "INVALID";
+    r["revision"] = config_version;
+  }
+  if (measureJson(doc) >= size) {
+    if (size > 0) out[0] = '\0';
+    return 0;
+  }
+  return serializeJson(doc, out, size);
+}
+
 uint32_t next_send(uint32_t last_send_utc_s, const TrapConfig& c) {
   return last_send_utc_s + static_cast<uint32_t>(c.send_every_h) * 3600;
 }

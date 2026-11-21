@@ -130,5 +130,27 @@ struct Reply {
 /// does not fit, or beyond the eighth or the payload buffer, are left out.
 bool parse_reply(const char* json, Reply* out);
 
+enum class CommandResult : uint8_t { Accepted, Rejected };  // reported as ACCEPTED or INVALID
+
+/// Applies a trap settings command, a JSON object of trap.cfg keys and values, to a copy of c by
+/// the rules of parse_config. Accepted: out holds the new settings with config_version raised.
+/// Rejected, with the reason in reason: out holds c unchanged. The whole command is refused when
+/// any of its settings is unknown, out of range, or one the link may not set (trap_id, which is
+/// the trap's name in FieldMesh, and config_version, which the trap raises itself).
+CommandResult apply_settings(const char* payload, const TrapConfig& c, TrapConfig* out,
+                             char* reason, size_t reason_size);
+
+// The result of one command, reported at the next send.
+struct CommandReport {
+  char id[32];  // FieldMesh's commandId
+  CommandResult result;
+};
+
+/// The status's control part, as the FieldHub reports it: the last command cursor taken, the
+/// settings version as the state revision, and each command's ID with ACCEPTED or INVALID.
+/// Returns its length, or 0 if it does not fit in size.
+size_t control_status_json(uint32_t last_cursor, uint16_t config_version,
+                           const CommandReport* reports, size_t n, char* out, size_t size);
+
 /// UTC time of the next send after the last one, every send_every_h hours.
 uint32_t next_send(uint32_t last_send_utc_s, const TrapConfig& c);

@@ -479,9 +479,18 @@ bool parse_reply(const char* json, Reply* out);
 
 enum class CommandResult : uint8_t { Accepted, Rejected };  // reported as ACCEPTED or INVALID
 
-/// Applies a trap settings command to a copy of c by the rules of parse_config.
+/// Applies a trap settings command, a JSON object of trap.cfg keys, to a copy of c by the rules
+/// of parse_config, raising config_version; refuses the whole command for any unknown or invalid
+/// setting, and for trap_id and config_version, which the link does not set.
 CommandResult apply_settings(const char* payload, const TrapConfig& c, TrapConfig* out,
                              char* reason, size_t reason_size);
+
+struct CommandReport { char id[32]; CommandResult result; };  // reported at the next send
+
+/// The status's control part as the FieldHub reports it: the last command cursor, the settings
+/// version as state revision, and each command's ID with ACCEPTED or INVALID.
+size_t control_status_json(uint32_t last_cursor, uint16_t config_version,
+                           const CommandReport* reports, size_t n, char* out, size_t size);
 
 /// UTC time of the next send after the last one, every send_every_h hours.
 uint32_t next_send(uint32_t last_send_utc_s, const TrapConfig& c);
