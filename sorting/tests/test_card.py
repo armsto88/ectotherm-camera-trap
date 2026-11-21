@@ -10,7 +10,7 @@ from conftest import SUMMARY_LINE, CardBuilder
 
 from trapsort.card import CardError, import_card, read_card, read_season, write_sorting
 from trapsort.cli import main
-from trapsort.model import GROUPS
+from trapsort.model import GROUPS, model_type_of
 
 
 def bench_run_card(card: CardBuilder) -> CardBuilder:
@@ -96,7 +96,7 @@ def test_empty_card_has_no_passes(tmp_path) -> None:
         (lambda t: t.replace("pass_id,", "id,", 1), "expected the header"),
         (lambda t: t.replace(",AtoB,", ",sideways,"), "unknown direction"),
         (lambda t: t.replace("2026-05-14T21:05:09Z", "2026-05-14 21:05"), "not a UTC time"),
-        (lambda t: t.replace(",lasers,", ",lasers,extra,"), "expected 10 fields"),
+        (lambda t: t.replace(",lasers,", ",lasers,extra,"), "expected 14 fields"),
         (lambda t: t.replace(",lasers,", ",camera,"), "unknown noticed_by"),
         (lambda t: t.replace(",lowest,", ",ankle,", 1), "unknown beam height"),
         (lambda t: t.replace("_2.jpg", "_9.jpg"), "is missing"),
@@ -110,7 +110,98 @@ def test_malformed_pass_file_raises_card_error(card: CardBuilder, change, messag
         read_card(card.root)
 
 
+def test_model_columns_with_and_without_a_model(card: CardBuilder) -> None:
+    card.add_pass("2026-05-14", "2026-05-14T21:05:09Z", "2026-05-14T21:05:11Z", pilot=True)
+    card.add_pass(
+        "2026-05-14",
+        "2026-05-14T21:30:00Z",
+        "2026-05-14T21:30:02Z",
+        model=("lizard", 0.87, "m1.0.0"),
+    )
+    without, with_model = read_card(card.root).passes
+    assert without.pilot is True
+    assert (without.model_type, without.model_confidence, without.model_version) == (
+        None,
+        None,
+        None,
+    )
+    assert with_model.pilot is False
+    assert (with_model.model_type, with_model.model_confidence, with_model.model_version) == (
+        "lizard",
+        0.87,
+        "m1.0.0",
+    )
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda t: t.replace(",lizard,", ",newt,"), "unknown model type"),
+        (lambda t: t.replace(",0.87,", ",high,"), "model_confidence is not a number"),
+        (lambda t: t.replace(",0.87,", ",1.20,"), "not between 0 and 1"),
+        (lambda t: t.replace(",lizard,", ",,"), "without a model type"),
+        (lambda t: t.replace(",false,lizard", ",no,lizard"), "pilot is not true or false"),
+    ],
+)
+def test_malformed_model_columns_raise_card_error(card: CardBuilder, change, message) -> None:
+    card.add_pass(
+        "2026-05-14",
+        "2026-05-14T21:30:00Z",
+        "2026-05-14T21:30:02Z",
+        model=("lizard", 0.87, "m1.0.0"),
+    )
+    path = card.root / "passes" / "2026-05-14.csv"
+    path.write_text(change(path.read_text()))
+    with pytest.raises(CardError, match=message):
+        read_card(card.root)
+
+
+def test_settings_for_placement_and_place(tmp_path: Path) -> None:
+    card = CardBuilder(
+        tmp_path / "card",
+        settings="placement=end\nside_a=pond side\nlatitude=49.4521\nlongitude=7.7541\n"
+        "send_every_h=24\nlink_timeout_s=180\nconfig_version=3\n",
+    )
+    season = read_card(card.root)
+    assert season.placement == "end"
+    assert season.side_a == "pond side"
+    assert season.coordinates == (49.4521, 7.7541)
+    assert season.config["config_version"] == "3"
+
+    plain = read_card(CardBuilder(tmp_path / "plain").root)
+    assert (plain.placement, plain.side_a, plain.coordinates) == ("line", "", None)
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ("placement=middle\n", "not line or end"),
+        ("latitude=91\nlongitude=7\n", "out of range"),
+        ("latitude=north\n", "not a number"),
+    ],
+)
+def test_malformed_settings_raise_card_error(tmp_path: Path, settings: str, message: str) -> None:
+    card = CardBuilder(tmp_path / "card", settings=settings)
+    with pytest.raises(CardError, match=message):
+        read_card(card.root)
+
+
+def test_model_type_of_a_group() -> None:
+    assert [model_type_of(g) for g in GROUPS] == [
+        "frog_or_toad",
+        "frog_or_toad",
+        "other",
+        "lizard",
+        "snake",
+        "other",
+        "other",
+    ]
+
+
 def test_malformed_fault_log_and_summary_raise_card_error(card: CardBuilder) -> None:
+    card.add_fault("2026-05-14T23:00:00Z,link_failed,no network\n")
+    card.add_fault("2026-05-14T23:10:00Z,update_failed,model m1.1.0: file\n")
+    assert [f["fault"] for f in read_card(card.root).faults] == ["link_failed", "update_failed"]
     card.add_fault("2026-05-14T23:00:00Z,on_fire,\n")
     with pytest.raises(CardError, match="unknown fault"):
         read_card(card.root)

@@ -253,7 +253,7 @@ test carrying `# spec: <id>`.
   built).
   Done when: an imported card equals the original, a second import into the same season is
   refused, and `read_season` reads back what `write_sorting` wrote.
-- [ ] 6.6 Read the pass file's new columns (`pilot`, `model_type`, `model_confidence`,
+- [x] 6.6 Read the pass file's new columns (`pilot`, `model_type`, `model_confidence`,
   `model_version`) and the new `trap.cfg` keys in `read_card`, and add `ModelType` and
   `model_type_of` to `model.py` (changes what 6.1 built).
   Done when: a card copy written by the tests with and without model columns filled is read back,
@@ -322,3 +322,5 @@ test carrying `# spec: <id>`.
   both placements. Tasks 1.2, 2.6 and 6.6 change code already built; 2.7 to 2.9, 4.4 to 4.6, 9.1
   and 9.2 are new; 3.2, 5.7, 6.3, 6.4, 7.1, 7.3 and 8.1 were extended before being built. Tasks 4.6
   and the release of a model over the link need the FieldMesh changes of entry 111.
+- 2026-11-21: 6.6 is built right after 6.5, before 6.2, since 6.3 and 6.4 take the pilot flag and
+  the model's columns it reads.

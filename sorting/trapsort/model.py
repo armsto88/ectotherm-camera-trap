@@ -11,11 +11,35 @@ from typing import Any, Literal
 Group = Literal["frog", "toad", "newt", "lizard", "snake", "turtle", "other"]
 GROUPS: tuple[Group, ...] = ("frog", "toad", "newt", "lizard", "snake", "turtle", "other")
 
+# The types the model on the trap gives a pass.
+ModelType = Literal["empty", "frog_or_toad", "lizard", "snake", "other"]
+MODEL_TYPES: tuple[ModelType, ...] = ("empty", "frog_or_toad", "lizard", "snake", "other")
+
+
+def model_type_of(group: Group) -> ModelType:
+    """The model type a person's group counts as: frog and toad as frog_or_toad; newt, turtle
+    and other as other."""
+    if group in ("frog", "toad"):
+        return "frog_or_toad"
+    if group in ("lizard", "snake"):
+        return group
+    return "other"
+
+
 # The values the trap writes into its pass files and fault log.
 DIRECTIONS = ("AtoB", "BtoA", "backA", "backB", "unknown")
 HEIGHTS = ("lowest", "middle", "top")
 NOTICED_BY = ("lasers", "pir", "both")
-FAULT_KINDS = ("beam_blocked", "beam_clear", "battery_low", "storage_low", "camera_failed")
+FAULT_KINDS = (
+    "beam_blocked",
+    "beam_clear",
+    "battery_low",
+    "storage_low",
+    "camera_failed",
+    "link_failed",
+    "update_failed",
+)
+PLACEMENTS = ("line", "end")
 
 
 @dataclass
@@ -36,7 +60,8 @@ class Picture:
 
 @dataclass
 class PassRecord:
-    """One row of a pass file, with its pictures."""
+    """One row of a pass file, with its pictures, whether it was recorded in pilot mode, and
+    the model type, confidence and model version, None when the trap had no model."""
 
     pass_id: str
     survey_day: str
@@ -49,6 +74,10 @@ class PassRecord:
     pictures: list[Picture]
     dropped_empty: int
     judged_empty: tuple[str, ...]
+    pilot: bool = False
+    model_type: ModelType | None = None
+    model_confidence: float | None = None
+    model_version: str | None = None
 
 
 @dataclass
@@ -67,6 +96,23 @@ class Season:
     def pictures(self) -> list[Picture]:
         """The pictures of all passes, in pass order."""
         return [picture for record in self.passes for picture in record.pictures]
+
+    @property
+    def placement(self) -> str:
+        """Where the trap sat: "line" in the fence line, "end" at a fence end."""
+        return self.config.get("placement", "line")
+
+    @property
+    def side_a(self) -> str:
+        """Side A in words, as the trap's settings describe it; "" when not given."""
+        return self.config.get("side_a", "")
+
+    @property
+    def coordinates(self) -> tuple[float, float] | None:
+        """Latitude and longitude from the trap's settings, or None when either is not set."""
+        if "latitude" not in self.config or "longitude" not in self.config:
+            return None
+        return float(self.config["latitude"]), float(self.config["longitude"])
 
     @property
     def survey_days(self) -> list[str]:

@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 
 PASS_HEADER = (
     "pass_id,start_utc,end_utc,direction,heights_a,heights_b,noticed_by,pictures,"
-    "dropped_empty,judged_empty\n"
+    "dropped_empty,judged_empty,pilot,model_type,model_confidence,model_version\n"
 )
 
 
@@ -29,12 +29,15 @@ class CardBuilder:
 
     root: Path
     trap_id: str = "ECT_0A1B2C"
+    settings: str = ""  # more trap.cfg lines
     _rows: dict[str, list[str]] = field(default_factory=dict)
     _numbers: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
-        (self.root / "trap.cfg").write_text(f"trap_id={self.trap_id}\nutc_offset_min=60\n")
+        (self.root / "trap.cfg").write_text(
+            f"trap_id={self.trap_id}\nutc_offset_min=60\n{self.settings}"
+        )
 
     def add_pass(
         self,
@@ -48,8 +51,11 @@ class CardBuilder:
         animal: list[bool] | None = None,
         dropped_empty: int = 0,
         judged_empty: list[int] | None = None,
+        pilot: bool = False,
+        model: tuple[str, float, str] | None = None,
     ) -> str:
-        """Adds a pass with one picture per entry of animal; returns its pass_id."""
+        """Adds a pass with one picture per entry of animal, and the model's type, confidence
+        and version when model is given; returns its pass_id."""
         animal = [True] if animal is None else animal
         number = self._numbers.get(day, 0) + 1
         self._numbers[day] = number
@@ -58,9 +64,11 @@ class CardBuilder:
         for name, has_animal in zip(names, animal):
             floor_picture(self.root / "pictures" / day / name, has_animal)
         judged = [names[i - 1] for i in (judged_empty or [])]
+        model_columns = f"{model[0]},{model[1]:.2f},{model[2]}" if model else ",,"
         self._rows.setdefault(day, []).append(
             f"{pass_id},{start},{end},{direction},{heights_a},{heights_b},{noticed_by},"
-            f"{';'.join(names)},{dropped_empty},{';'.join(judged)}\n"
+            f"{';'.join(names)},{dropped_empty},{';'.join(judged)},{str(pilot).lower()},"
+            f"{model_columns}\n"
         )
         self._write_pass_file(day)
         return pass_id
@@ -97,5 +105,6 @@ def card(tmp_path: Path) -> CardBuilder:
 SUMMARY_LINE = (
     '{"datetime":"2026-05-14T10:00:00Z","nodeId":"ECT_0A1B2C","seqNum":12,'
     '"sensorPresent":0,"qualityFlags":0,"configVersion":1,"batVoltage":3.98,'
-    '"airTemp":17.50,"trapPasses":143,"trapFreeMB":98112,"trapViewClear":true}\n'
+    '"airTemp":17.50,"latitude":null,"longitude":null,"trapKind":"state","trapPasses":143,'
+    '"trapFreeMB":98112,"trapViewClear":true}\n'
 )

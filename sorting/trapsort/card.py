@@ -23,7 +23,17 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .model import DIRECTIONS, FAULT_KINDS, HEIGHTS, NOTICED_BY, PassRecord, Picture, Season
+from .model import (
+    DIRECTIONS,
+    FAULT_KINDS,
+    HEIGHTS,
+    MODEL_TYPES,
+    NOTICED_BY,
+    PLACEMENTS,
+    PassRecord,
+    Picture,
+    Season,
+)
 
 PASS_COLUMNS = [
     "pass_id",
@@ -36,6 +46,10 @@ PASS_COLUMNS = [
     "pictures",
     "dropped_empty",
     "judged_empty",
+    "pilot",
+    "model_type",
+    "model_confidence",
+    "model_version",
 ]
 FAULT_COLUMNS = ["time_utc", "fault", "detail"]
 SORTING_COLUMNS = ["picture", "pass_id", "survey_day", "empty", "difference"]
@@ -158,7 +172,23 @@ def _read_config(path: Path) -> dict[str, str]:
         if not sep:
             raise CardError(f"{path}:{number}: expected key=value")
         config[key.strip()] = value.strip()
+    _check_config(path, config)
     return config
+
+
+def _check_config(path: Path, config: dict[str, str]) -> None:
+    """Checks the settings the sorting tool uses, by the trap's own rules for them."""
+    if config.get("placement", "line") not in PLACEMENTS:
+        raise CardError(f"{path}: placement is {config['placement']!r}, not line or end")
+    for key, limit in (("latitude", 90.0), ("longitude", 180.0)):
+        if key not in config:
+            continue
+        try:
+            value = float(config[key])
+        except ValueError:
+            raise CardError(f"{path}: {key} is not a number") from None
+        if not -limit <= value <= limit:
+            raise CardError(f"{path}: {key} {value} is out of range")
 
 
 def _utc(text: str, where: str) -> datetime:
@@ -202,6 +232,10 @@ def _read_pass_file(card: Path, path: Path) -> list[PassRecord]:
         except ValueError:
             raise CardError(f"{where}: dropped_empty is not a number") from None
 
+        if values["pilot"] not in ("true", "false"):
+            raise CardError(f"{where}: pilot is not true or false")
+        model_type, confidence, version = _model_columns(values, where)
+
         judged_empty = _names(values["judged_empty"])
         pictures = []
         for name in _names(values["pictures"]):
@@ -229,9 +263,31 @@ def _read_pass_file(card: Path, path: Path) -> list[PassRecord]:
                 pictures=pictures,
                 dropped_empty=dropped,
                 judged_empty=judged_empty,
+                pilot=values["pilot"] == "true",
+                model_type=model_type,
+                model_confidence=confidence,
+                model_version=version,
             )
         )
     return records
+
+
+def _model_columns(values: dict[str, str], where: str):
+    """The model's type, confidence and version; all None when the trap had no model."""
+    model_type = values["model_type"]
+    if not model_type:
+        if values["model_confidence"] or values["model_version"]:
+            raise CardError(f"{where}: a model confidence or version without a model type")
+        return None, None, None
+    if model_type not in MODEL_TYPES:
+        raise CardError(f"{where}: unknown model type {model_type!r}")
+    try:
+        confidence = float(values["model_confidence"])
+    except ValueError:
+        raise CardError(f"{where}: model_confidence is not a number") from None
+    if not 0.0 <= confidence <= 1.0:
+        raise CardError(f"{where}: model_confidence {confidence} is not between 0 and 1")
+    return model_type, confidence, values["model_version"]
 
 
 def _read_empty_views(card: Path) -> dict[str, list[Picture]]:
