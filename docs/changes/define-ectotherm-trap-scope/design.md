@@ -745,7 +745,8 @@ labels.csv                     people's labels and bucket labels; only ever appe
 ```
 
 - `sorting.csv`: `picture,pass_id,survey_day,empty,difference`, one row per picture, with
-  `difference` from the day's empty view.
+  `difference` the largest mean difference from the day's closest empty view over any small patch
+  of the picture, so that a small animal counts as much as a large one.
 - `labels.csv`: `picture,pass_id,kind,value,by,at`, where `kind` is `name`, `group`, `empty` (value
   `true` or `false`), `unclear` (a picture marked "can't tell"), `bucket` (a name) or
   `bucket_group`. Bucket rows name the pass and leave `picture` empty.

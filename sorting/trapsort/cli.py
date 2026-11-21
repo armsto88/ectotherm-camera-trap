@@ -7,7 +7,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from .card import CardError, import_card
+from .card import CardError, import_card, read_season, write_sorting
+from .empty import DEFAULT_THRESHOLD, mark_empty
 
 
 def _import(args: argparse.Namespace) -> int:
@@ -28,6 +29,21 @@ def _import(args: argparse.Namespace) -> int:
     return 0
 
 
+def _sort(args: argparse.Namespace) -> int:
+    season = read_season(args.season)
+    mark_empty(season, args.threshold)
+    write_sorting(season, args.season)
+    pictures = season.pictures
+    empty = sum(1 for p in pictures if p.empty)
+    unjudged = sum(1 for p in pictures if p.empty is None)
+    print(
+        f"{len(pictures)} pictures: {empty} marked empty, "
+        f"{len(pictures) - empty - unjudged} left for a person, "
+        f"{unjudged} without an empty view of their day (also left for a person)"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="trapsort", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -38,6 +54,19 @@ def main(argv: list[str] | None = None) -> int:
     importing.add_argument("card", type=Path, help="the card, or a folder holding a copy of it")
     importing.add_argument("season", type=Path, help="the season folder to copy it into")
     importing.set_defaults(run=_import)
+
+    sorting = commands.add_parser(
+        "sort", help="mark the pictures that look like their survey day's empty view"
+    )
+    sorting.add_argument("season", type=Path, help="the season folder")
+    sorting.add_argument(
+        "--threshold",
+        type=float,
+        default=DEFAULT_THRESHOLD,
+        help="largest difference from the empty view in any part of a picture still marked "
+        f"empty, from 0 to 1 (default {DEFAULT_THRESHOLD})",
+    )
+    sorting.set_defaults(run=_sort)
 
     args = parser.parse_args(argv)
     try:

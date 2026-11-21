@@ -216,7 +216,7 @@ test carrying `# spec: <id>`.
 - [x] 6.1 Build the `trapsort` package with its types in `model.py`, `read_card` and the command
   `trapsort import`.
   Done when: it reads the card copy of a bench run, and raises `CardError` on a malformed pass file.
-- [ ] 6.2 Build `mark_empty` and the command `trapsort sort`, which marks the pictures that look
+- [x] 6.2 Build `mark_empty` and the command `trapsort sort`, which marks the pictures that look
   like their survey day's empty view and writes `sorting.csv`.
   Tests:
   - `6e42dbca` Pictures like the empty view are marked
