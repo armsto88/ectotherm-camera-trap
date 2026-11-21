@@ -1195,3 +1195,186 @@
 - **Reason:** Keeps this change to the trap; the FieldMesh issue already holds those tools.
 - **Rejected:** Building the FieldMesh tools in this change (a second system to build before the
   trap has run a season).
+
+## 104. Which modem goes in the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The Quectel EG810M-EU, Auris's modem, with Auris's 3.9 V supply, nano-SIM holder and
+  antenna design. A driver for it is written for the trap, so that Auris can share it later.
+- **Reason:** Chosen on the round 1 page of propose against the recommendation, without a note. It
+  keeps the trap and Auris on one modem, as entry 85 has the modem built after Auris. The accepted
+  cost: no driver for it exists in the user's projects, so one must be written before the trap can
+  send; the FieldHub's upload rules (batches, confirmation, retries) are reused above it. It is
+  approved for Europe, Australia and New Zealand only.
+- **Rejected:** The SIMCom A7670G, the FieldHub's modem with a working driver and a global module
+  (the trap and Auris would differ).
+
+## 105. How do pass records reach FieldMesh?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As readings, from the start: each pass is a reading of the trap with its own time
+  and sequence number and trap keys with flat values (direction, beam heights, what noticed it, the
+  model's type, how sure it is, the model version). FieldMesh models these keys later.
+- **Reason:** FieldMesh has no place for pass records but stores reading keys it does not model, so
+  the trap can send from its first day. The trap sends right after its daily summary, so the summary
+  stays the trap's newest reading. The accepted cost: until FieldMesh models the keys, passes are
+  missing from its CSV export and its views treat them like sensor values.
+- **Rejected:** A pass type in FieldMesh first (the trap's link would wait for FieldMesh work in
+  another repository).
+
+## 106. How does a new model reach the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As a separate model file on the memory card, signed with the release key and checked
+  before use, with its own update path over the link. The trap keeps the model it has when a new
+  one fails its check or does not load. Until FieldMesh can release model files to devices, a model
+  is copied onto the card at a visit or on the bench.
+- **Reason:** Chosen on the round 1 page of propose against the recommendation, without a note. A
+  model file of its own can change without a firmware release, and the model version stays
+  separate from the firmware's. The accepted cost: a second update path, in the trap and in
+  FieldMesh, built before any model exists; FieldMesh can release only firmware today.
+- **Rejected:** The model built into the camera controller's firmware, a new model being a signed
+  firmware update (every new model a whole firmware download of about 2 MB, model and firmware
+  released together).
+
+## 107. How is a trap known to FieldMesh?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Each trap is registered as a hub of its own, with its own upload key and one node,
+  itself.
+- **Reason:** Works with FieldMesh's devices as they are.
+- **Rejected:** A new kind of device in FieldMesh for traps (FieldMesh work before the trap can
+  send).
+
+## 108. How do settings come back to the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As FieldMesh commands in the reply to an upload, confirmed the way the FieldHub
+  confirms them. FieldMesh needs a new command type for trap settings.
+- **Reason:** FieldMesh's existing way back to devices; no second channel.
+- **Rejected:** A settings file the trap fetches from a web address (a second channel to secure and
+  keep).
+
+## 109. How are firmware updates installed?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As on the FieldHub: a manifest signed with the release key, the image written to the
+  spare slot and checked, and a fall-back to the old firmware when the new one does not confirm
+  itself. The fall-back is proven on the ESP32-S3 on the bench.
+- **Reason:** The user's existing signed path; only the chip is new. It has run on the classic ESP32
+  but not on the ESP32-S3 or over the mobile network with the real key.
+- **Rejected:** A new update scheme for the trap (more to build and prove).
+
+## 110. Does the trap check FieldMesh's server certificate?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Yes, unlike the FieldHub today.
+- **Reason:** Otherwise the upload key and the update path can be intercepted.
+- **Rejected:** No check, as on the FieldHub (an intercepted key lets others upload as the trap).
+
+## 111. Where does the FieldMesh side get built?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** One FieldMesh issue collects what the trap needs there: a command for trap settings,
+  a release role for trap firmware, a way to release model files to traps (entry 106), and modelling
+  the pass keys. Until it is done, the trap sends but takes nothing back.
+- **Reason:** Keeps FieldMesh work in its own repository; the trap is not blocked from sending.
+- **Rejected:** Building the FieldMesh side in this change (another repository, with its own
+  workflow).
+
+## 112. How long does the trap try to connect?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** About three minutes; then it records a link fault and tries again at the next
+  sending time.
+- **Reason:** Weak coverage must not drain the battery.
+- **Rejected:** Trying until it gets through (a trap at the edge of coverage could empty its pack).
+
+## 113. Where does the trap's clock come from?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The trap sets its clock from FieldMesh's server time at each send.
+- **Reason:** FieldMesh sends the time with every reply, so the clock no longer drifts over a
+  season.
+- **Rejected:** Setting the clock only at setup (drift over six months shifts pass times).
+
+## 114. Where does the modem's antenna sit?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** On the solar panel's stake, above the vegetation, with a cable to the trap.
+- **Reason:** Inside the bucket at ground level the signal is weakest.
+- **Rejected:** A flexible antenna inside the hood, as in Auris (weak signal at ground level).
+
+## 115. Which firmware is updated over the link?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Only the camera controller's; the beam watcher's firmware changes at a visit.
+- **Reason:** The watcher's logic is small and tested; updating it remotely needs extra wiring and a
+  second fall-back.
+- **Rejected:** The camera controller also reprogramming the watcher (wiring and a fall-back for a
+  rarely changed part).
+
+## 116. How large is the pack?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Two 18650 cells in parallel, as before. With the modem and the model the estimate
+  rises to about 35 to 45 mAh a day, still more than five months without sun; the bench measures
+  it.
+- **Reason:** The same pack as Auris; the estimate leaves room, and entry 94 lets it grow if the
+  bench measures more.
+- **Rejected:** Three or four cells now (cost and space for a load not yet measured).
+
+## 117. What runs the model on the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** TensorFlow Lite Micro, with the model in 8-bit form, which works with the Arduino
+  framework on the ESP32-S3.
+- **Reason:** Fits the firmware's tools.
+- **Rejected:** Espressif's ESP-DL (needs ESP-IDF, against the firmware's framework).
+
+## 118. How is the first model trained?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** With Keras in a new `model/` folder, on the free pictures from California, Ohio,
+  Indiana and the Australian set turned grey, then fine-tuned and checked on named bench pictures
+  kept apart from training.
+- **Reason:** Keras gives the 8-bit model for the trap directly; the bench pictures close the gap
+  between others' colour pictures and the trap's infrared ones.
+- **Rejected:** PyTorch, converted for the trap (an extra conversion step that can change the
+  model).
+
+## 119. How does the trap sit at a fence end?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As in the fence line, with a short piece of fence, about a bucket's width, beyond
+  it; the sides of the fence keep their meaning.
+- **Reason:** The same joints and the same directions in both placements; animals on either side
+  are led to an opening.
+- **Rejected:** The passage continuing the fence, with two short wings leading into one end
+  (different joints, and directions that mean something else).
+
+## 120. How do the settings describe the placement?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The settings note the placement as in the fence line or at a fence end, and describe
+  side A in words, such as "pond side".
+- **Reason:** Words are what surveyors write down; a bearing means little for "which side".
+- **Rejected:** Side A as a compass bearing.
+
+## 121. How does the review page know a pass was recorded in pilot mode?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Each pass record notes whether the trap was in pilot mode; the review page hides the
+  model's type for those passes.
+- **Reason:** Pilot mode can change over the link in mid-season.
+- **Rejected:** Reading pilot mode once for the whole season from the card's settings (wrong for a
+  season that changed mode).
+
+## 122. What does the Camtrap DP export do with the model's types?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** It uses people's groups and names; a pass nobody has sorted gets the model's type,
+  marked as classified by machine with how sure the model was.
+- **Reason:** Camtrap DP has fields for machine classifications, so nothing is passed off as a
+  person's.
+- **Rejected:** People's labels only, with unsorted passes left unclassified.

@@ -4,24 +4,25 @@ areas: [hardware]
 # The trap is an upturned bucket with a printed insert
 
 ## Context
-The trap is a passage set into a drift-fence line that replaces the bucket. It must be dark inside,
-hold the camera at a fixed height above the floor, keep the beams aligned, leave room for a side
-view and a roof laser, and be buildable for drift fences anywhere, by people who are not
-electronics specialists.
+The trap is a passage set into a drift fence, in its line or at its end, that replaces the bucket.
+It must be dark inside, hold the camera at a fixed height above the floor, keep the beams aligned,
+leave room for a side view and a roof laser, and be buildable for drift fences anywhere, by people
+who are not electronics specialists.
 
 ## Options considered
 - An upturned standard bucket as the hood, with a 3D-printed insert carrying the floor, beam walls,
   camera and electronics.
 - A purpose-built housing, printed or moulded in one piece: rejected, costly in small numbers and
   repairable only with the maker's parts.
-- A plastic or metal channel with a separate box on top: rejected, more cutting, fitting and
-  sealing per trap.
+- A plastic or metal channel with a separate box on top: rejected, more cutting, fitting and sealing
+  per trap.
 
 ## Decision
 The trap is an upturned standard bucket of about 30 cm diameter with openings in two opposite sides
-for the fence ends. A printed insert, generated from a parametric script for the bucket's size,
-carries a passage 15 cm wide whose floor lies flush with the ground at both ends, the beam walls,
-the camera, the light and the electronics.
+for the fence ends; at a fence end, a short piece of fence about a bucket's width continues beyond
+it, so the trap sits the same way in both placements. A printed insert, generated from a parametric
+script for the bucket's size, carries a passage 15 cm wide whose floor lies flush with the ground at
+both ends, the beam walls, the camera, the light and the electronics.
 
 ## Consequences
 - Buckets are cheap and sold everywhere; a broken hood is replaced from any hardware store.

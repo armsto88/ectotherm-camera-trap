@@ -1,10 +1,11 @@
 # picture-sorting
 
 ## Purpose
-Pictures are sorted in two steps: a simple filter on the trap drops pictures that are obviously
-empty, and after collection the computer marks pictures that look like the empty passage, after
-which people sort each remaining pass into a broad group and name the species as far as its
-pictures allow. People's groups and names become the labels from which a model can learn later.
+On the trap, a simple filter drops pictures that are obviously empty, and a small model gives each
+pass a type of animal without deleting anything. After collection the computer marks pictures that
+look like the empty passage, and people sort each remaining pass into a broad group and name the
+species as far as its pictures allow. People's groups and names become the labels from which the
+model keeps learning.
 
 ## Terms
 - **Empty picture:** a picture showing no animal.
@@ -13,6 +14,9 @@ pictures allow. People's groups and names become the labels from which a model c
   the evaluation.
 - **Can't tell:** the mark a person gives a picture that shows something they cannot sort into a
   group.
+- **Model type:** the type of animal the model on the trap gives a pass: frog or toad, lizard,
+  snake, other animal, or empty. Newts, salamanders and turtles count as other animal until the
+  trap's own named pictures teach the model them.
 
 ## ADDED Requirements
 
@@ -40,6 +44,26 @@ mistakes can be counted.
 - **When** the filter judges a picture empty
 - **Then** the trap stores the picture and marks it as judged empty
 
+### Requirement: The model on the trap labels each pass
+When the trap has a model, it shall give each pass a model type and how sure it is after the
+pass's pictures are taken, and keep both with the model's version in the pass record. The model
+shall delete nothing; which pictures are kept stays the filter's decision alone.
+
+#### Scenario: The model gives a pass its type <!-- id: 5c00e1eb -->
+- **Given** a model on the trap
+- **When** the pictures of a pass have been taken
+- **Then** the pass record holds the model type, how sure the model is, and the model's version
+
+#### Scenario: The model deletes nothing <!-- id: be4d4900 -->
+- **Given** a model on the trap that judges a pass empty
+- **When** the filter keeps the pass's pictures
+- **Then** the pictures are stored and the pass record holds the model type empty
+
+#### Scenario: A trap without a model <!-- id: b83ecc08 -->
+- **Given** no model on the trap
+- **When** a pass is recorded
+- **Then** the pass record leaves the model type empty and holds everything else as before
+
 ### Requirement: Empty pictures marked after collection
 After the pictures are collected, the computer shall mark each stored picture that looks like the
 daily picture of the empty view from its survey day as empty, and leave every other picture for a
@@ -57,7 +81,9 @@ Every pass with a picture not marked empty shall be shown to a person with all i
 side. The person picks the pass's broad group and adds the species name as far as the pictures
 allow, and both are stored with every picture of the pass. The person can mark a single picture
 empty or "can't tell", correct an empty mark, and label the pictures of a pass one by one when they
-show different animals.
+show different animals. For a pass recorded in pilot mode the model type shall not be shown; for
+any other pass it shall be shown as a suggestion, and only what the person picks is stored as
+their label.
 
 #### Scenario: A person sorts and names a pass <!-- id: 016374dd -->
 - **Given** a pass whose pictures show a lizard
@@ -80,10 +106,21 @@ show different animals.
 - **When** the person labels the pictures one by one
 - **Then** each picture keeps its own group and name
 
+#### Scenario: The model type is hidden in the pilot <!-- id: 4296a7e0 -->
+- **Given** a pass recorded in pilot mode, with the model type lizard
+- **When** the pass is shown to a person to sort
+- **Then** the page does not show the model type
+
+#### Scenario: The model type is suggested after the pilot <!-- id: 37dd1930 -->
+- **Given** a pass recorded outside pilot mode, with the model type lizard
+- **When** the pass is shown to a person to sort
+- **Then** the page suggests lizard
+- **And** only the group the person picks is stored as their label
+
 ### Requirement: Labels for learning
 The groups and names people give, and the in-hand identifications of animals caught in the bucket
-during the field phase, shall be stored with the pictures of the matching pass, so that a model can
-learn from them later.
+during the field phase, shall be stored with the pictures of the matching pass, so that the model
+on the trap can learn from them.
 
 #### Scenario: A bucket animal labels its pictures <!-- id: 2a1668f9 -->
 - **Given** a pass whose pictures match an animal caught in the bucket behind the trap

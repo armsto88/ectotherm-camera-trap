@@ -1,10 +1,10 @@
 # unattended-season
 
 ## Purpose
-The trap runs a whole season of three to six months without a visit and without any connection,
-and writes a short daily summary of its state to its memory card, so that the labour and handling
-of daily bucket checks fall away and the trap's state over the season can be read when it is
-collected.
+The trap runs a whole season of three to six months without a visit, also where there is no
+coverage, and writes a short daily summary of its state to its memory card, which it also sends
+over the link, so that the labour and handling of daily bucket checks fall away and the trap's
+state can be followed during the season and read when it is collected.
 
 ## Terms
 - **Season:** up to six months between setting a trap up and collecting it.
@@ -23,8 +23,9 @@ load without a visit.
 - **When** it runs for six months with passes at the expected load
 - **Then** it still notices, photographs and records passes at the end of the six months
 
-### Requirement: No connection needed
-The trap shall do everything without any connection.
+### Requirement: Works without coverage
+The trap shall notice, photograph and record passes without any connection; only sending waits for
+coverage.
 
 #### Scenario: A trap where there is no coverage <!-- id: 40ee900d -->
 - **Given** a trap at a site without any coverage
@@ -34,8 +35,8 @@ The trap shall do everything without any connection.
 ### Requirement: Daily state summary
 Once a day the trap shall write a state summary to its memory card with its battery level, free
 storage, the number of passes since the last summary, whether the daily picture showed a clear
-view, and the coordinates from its settings, in the format the FieldMesh system takes, so that a
-later uplink can send it unchanged.
+view, and the coordinates from its settings, in the format the FieldMesh system takes, so that the
+link can send it unchanged.
 
 #### Scenario: The daily summary is written <!-- id: e2024b9a -->
 - **Given** the trap is running
@@ -61,8 +62,9 @@ later uplink can send it unchanged.
 - **Then** it is a valid reading
 
 ### Requirement: The trap records its own faults
-The trap shall record, with their times, every fault that can cost records: a blocked beam, a low
-battery, nearly full storage and a camera that fails to take a picture.
+The trap shall record, with their times, every fault that can cost records or leave the trap
+unreachable: a blocked beam, a low battery, nearly full storage, a camera that fails to take a
+picture, a send that fails and an update that fails.
 
 #### Scenario: A fault is recorded <!-- id: 5ac27b8b -->
 - **Given** the trap is running
