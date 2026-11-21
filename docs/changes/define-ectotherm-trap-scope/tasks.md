@@ -9,7 +9,7 @@ test carrying `# spec: <id>`.
   `hardware/` and `docs/testing/`, and a `.gitignore` for PlatformIO and Python build output.
   Done when: git shows the three files as renamed, and the new `README.md` describes the trap and
   links to `prototype/`.
-- [ ] 1.2 Describe in `README.md` how the trap is set in the fence line and at a fence end, with a
+- [x] 1.2 Describe in `README.md` how the trap is set in the fence line and at a fence end, with a
   short piece of fence beyond it, how side A is chosen and described in `trap.cfg`, and the folders
   `model/` and the link's `link.cfg` (changes what 1.1 built).
   Done when: the `README.md` shows both placements and the settings they need.
