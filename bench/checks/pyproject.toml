@@ -1,0 +1,22 @@
+[project]
+name = "bench-checks"
+version = "0.1.0"
+description = "Checks of bench runs of the ectotherm camera trap against their plans"
+requires-python = ">=3.11"
+dependencies = ["trapsort", "pytest"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+trapsort = { path = "../../sorting", editable = true }
+
+[dependency-groups]
+dev = ["ruff", "pillow>=10"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+markers = ["bench: a check of a recorded bench run; needs --bench-run"]
+
+[tool.ruff]
+line-length = 100

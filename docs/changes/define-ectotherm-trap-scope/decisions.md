@@ -731,3 +731,888 @@
   its scenario.
 - **Rejected:** Unit tests only, with bench results noted by hand (no repeatable check for most
   scenarios).
+
+## 65. Does the change ignore build output in git?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** Yes. The design's Impact gains `.gitignore`, which task 1.1 extends with PlatformIO
+  and Python build output; it already ignores Python's cache folders since oekospec was installed.
+- **Reason:** Task 1.1 asks for the file, but the design's Impact left it out; the design was wrong,
+  not the task.
+- **Rejected:** Dropping the `.gitignore` from task 1.1 (build output would show up in every
+  commit).
+
+## 66. How does the camera know a pass is under way?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** `PassBuilder` gains `bool open() const`, true while a pass is open; the design's
+  interface for `passes` lists it.
+- **Reason:** The camera takes a picture every half second while the animal is in the passage, and
+  cannot tell from its crossings alone whether a pass is open, since crossings on ignored beams open
+  none. Building the pass library brought it up.
+- **Rejected:** The camera working out an open pass itself (it would repeat the builder's rules).
+
+## 67. Where does the sorting tool keep a season and its own results?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** A season is a folder on the computer that holds the card copy in `card/` and the
+  tool's own files beside it: `sorting.csv` for the model's results, `labels.csv` and
+  `season.cfg`. `trapsort import` checks a card and copies it into a season folder; every other
+  command takes the season folder.
+- **Reason:** The model's results must last between commands, people's labels must never mix with
+  machine output, and sorting again must never touch people's work. The design said only that
+  labels lie "beside the season"; building the sorting tool brought it up.
+- **Rejected:** Keeping the model's results as rows in `labels.csv`, one log for people and model
+  (mixes machine and human entries; sorting again appends thousands of rows).
+
+## 68. How are labels written and read back?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** `LabelStore` opens a season's `labels.csv` and also reads labels back: a picture's
+  name, group and empty mark, and a pass's bucket labels. People can correct an empty mark. Each
+  group correction keeps the model's group at that moment in a new column `model_group`.
+  `add_bucket_label` takes the group as well.
+- **Reason:** The summary, export, evaluation and training read labels back; a corrected group must
+  be stored together with the model's original group; the specs let people correct an empty mark.
+  The design listed only the writing methods.
+- **Rejected:** Each reader parsing `labels.csv` itself, and taking the model's original group from
+  `sorting.csv` (sorting again would overwrite it).
+
+## 69. How is a trained group model loaded, and is PyTorch required?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** A trained group model is loaded with `load_group_model(path)`. PyTorch is an
+  optional extra of the tool, `trapsort[model]`, and the training test runs where it is installed.
+- **Reason:** `trapsort sort` has to load what `trapsort train` saved; PyTorch is a large download
+  that reading, reviewing and exporting do not need.
+- **Rejected:** PyTorch as a required dependency (a large download for every user).
+
+## 70. What time does a picture get in the Camtrap DP export?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** Each picture's time is the pass's start plus half a second per picture before it,
+  noted as estimated in the media comments; observations use the pass's exact start and end.
+- **Reason:** Camtrap DP requires a time for every picture, and the pass file records only the
+  pass's start and end.
+- **Rejected:** The firmware writing each picture's time into the pass file (a new column; changes
+  the records library already built).
+
+## 71. How is an animal in the bucket matched to a pass?
+- **Date:** 2026-11-20
+- **Step:** implement
+- **Decision:** In the field phase, a bucket animal matches the earliest unmatched pass since the
+  previous check whose pictures show its group; passes that went through the trap come before
+  turned-back ones.
+- **Reason:** Bucket checks give only the check time and the animal, so group and time are what can
+  be matched.
+- **Rejected:** Also requiring the direction toward the bucket (needs the bucket's side recorded in
+  `season.cfg`).
+
+## 72. Where do the trap's parts come from?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Every chip on the trap's own boards comes from LCSC, so that JLCPCB can assemble the
+  boards; plug-in parts such as the camera module may come from elsewhere.
+- **Reason:** The user's boards are drawn in EasyEDA and made at JLCPCB, which assembles from
+  LCSC's stock. LCSC carries no ready OV5640 module with lens and cable, only the bare sensor, so a
+  rule covering the camera too would mean a 2 or 3 megapixel camera.
+- **Rejected:** Everything from LCSC, camera included (only 2 or 3 megapixel camera boards; a 3 cm
+  animal would be about 180 instead of about 300 pixels long).
+
+## 73. Where may the trap's chips come from?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Every chip on the trap's own boards must be one JLCPCB can assemble: from LCSC's
+  stock where it has it, otherwise ordered in through JLCPCB's global sourcing from suppliers such
+  as DigiKey and Mouser. Plug-in parts such as the camera module may come from anywhere.
+- **Reason:** The user pointed out that JLCPCB orders in parts LCSC lacks. LCSC stock stays the
+  first choice, since parts ordered in add about two to four weeks, cannot be returned once ordered
+  and some carry customs fees of 3 to 30%.
+- **Rejected:** LCSC's stock only (rules out most chips that run image models, which LCSC lacks or
+  holds only a few of).
+- **Replaces:** 72, in that chips may also be ordered in through JLCPCB.
+
+## 74. What must the camera controller allow for a vision model later?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** The ESP32-S3 stays the camera controller and is enough: a vision model would run on
+  it after the pictures of a pass are taken. A separate chip for models comes only with a later
+  board revision, and only if a test shows the ESP32-S3 is not enough.
+- **Reason:** The user wants a vision model that sorts pictures on the trap. The decision is not
+  timing-critical, since the model can judge the pictures after they are taken, in a second or two
+  per pass. The ESP32-S3 runs small image models in about 0.1 to 0.2 s per picture and, with its
+  extra memory, can run larger ones slowly; at about 200 passes a day the model's energy is roughly
+  2 mAh a day against about 30 mAh for the rest (estimates). The v1 boards will be revised after the
+  bench tests anyway.
+- **Rejected:** The ESP32-S3 with a free slot for a helper chip (designed for a chip not yet
+  known); a helper chip such as the MAX78000 (far less energy and faster, but holds only small
+  models, needs its own tools and its long-term supply is uncertain; its strengths do not matter
+  when timing does not); switching to a vision chip such as the STM32N6 now (scarce, costly, new
+  tools before the trap has taken a picture).
+
+## 75. Does this change include a learned image model?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** No. Version 1 sorts pictures without a learned model: the trap's cautious filter,
+  the computer marking pictures that look like the day's empty view, and people sorting and naming
+  the rest, whose names are kept as labels for training later. A learned model, run on the trap
+  after each pass, is a later change.
+- **Reason:** The user's first priority is a trap that works on its own as a laser-triggered camera
+  trap; a model on a computer is not their concern now. No model can be trained before people have
+  named a season or so of pictures, so version 1 loses nothing and is finished sooner.
+- **Rejected:** A model on the computer in this change (its tools could not be used before the first
+  season is named); a model on the computer and on the trap in this change (version 1 would wait
+  for a season of named pictures and a checked model).
+- **Replaces:** 17, 22, 63 and 69, and 23 as far as a full model on a computer goes.
+
+## 76. Does the camera focus itself?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** No. The camera has fixed focus, with a lens whose focal length is chosen for the
+  passage and the camera's height, focused once at the trap and fixed in place. The camera's height
+  and the module are settled in propose and on the bench.
+- **Reason:** The distance to the floor never changes. With the view just covering the passage, a
+  5 megapixel camera gives about 10 pixels per millimetre, and at f/2 the depth of field reaches
+  about 3 cm above the floor with the camera at 20 cm, about 4 cm at 25 cm and about 4.5 cm at 30 cm
+  (estimates). No moving parts in a damp hood and no focusing delay. The accepted cost: animals
+  taller than that are slightly soft on top.
+- **Rejected:** Autofocus (a delay on every picture, a small motor in the damp, mixed reports with
+  the ESP32, and in dim infrared light it may focus on the floor instead of the animal).
+
+## 77. Which infrared light lights the pictures?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Decided on the bench, with 940 nm as the default: the board takes infrared LEDs of
+  either 940 or 850 nm in the same place, and the controlled tests compare picture quality and power
+  and watch whether animals react to the faint glow of 850 nm.
+- **Reason:** Ordinary sensors such as the OV5640 are far less sensitive at 940 nm; 850 nm likely
+  gives two to three times the picture for the same light (estimate), but whether reptiles and
+  amphibians notice its glow at a few centimetres in a dark passage is unknown. The user accepts
+  the extra power of 940 nm: if the trap needs more, it gets larger batteries.
+- **Rejected:** Staying with 940 nm without testing 850 nm (stronger LEDs and more power per picture
+  for an untested gain); switching to 850 nm now (its effect on the animals is untested).
+- **Replaces:** 45, in that 850 nm is tested on the bench instead of ruled out.
+
+## 78. Do turtles count as a group of their own?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** Yes. Turtle becomes a broad group beside frog, toad, newt, lizard, snake and other;
+  the trap is not sized for large turtles, so only small ones pass.
+- **Reason:** The user named turtles among the animals to tell apart. Small turtles get counted and
+  named like every other animal at no cost; large turtles are usually surveyed by other methods. The
+  accepted cost: shells taller than the depth of field are slightly soft on top.
+- **Rejected:** Turtles as a design target (a passage of 20 cm or more and a higher camera: a bigger
+  bucket, longer beams and less detail on the small animals the trap is mainly for); turtles under
+  "other" (they could not be counted apart).
+- **Replaces:** 22, in its list of broad groups.
+
+## 79. When does a pass count as having a usable picture, and as identified?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** A pass has a usable picture when a person sorting the pictures gave any of its
+  pictures a group or a name; marking a picture "can't tell" or "empty" does not count. A pass is
+  identified when the name given matches the animal the test plan or the bucket check names.
+- **Reason:** The evaluation reports the share of animals with a usable picture, but the specs did
+  not say who judges it. A usable picture is one from which a person can tell at least the group,
+  which is what entry 18 asks of a picture, and it costs no extra click. The accepted cost: a test
+  run must be sorted in full before it is evaluated.
+- **Rejected:** A separate "good enough" mark on each picture (one more click that mostly repeats
+  choosing the group); every picture not marked empty counting as usable (blurred pictures would
+  count, which flatters the trap).
+
+## 80. How does a picture get its broad group?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** The person sorting picks the group of each picture that shows an animal, and adds
+  the species name where the picture allows. Bucket animals take their group from the bucket check
+  sheet.
+- **Reason:** Counts per survey day, matching bucket animals and a later model all work with
+  groups, and without a model no group is guessed in advance. One click gives every animal a group,
+  even when its species cannot be named.
+- **Rejected:** A list that gives each species name its group (every new species needs an entry
+  first; one more file to keep right).
+- **Replaces:** 68, in that there is no model's group to keep beside a person's group.
+
+## 81. Where do a trap's coordinates come from?
+- **Date:** 2026-11-20
+- **Step:** discuss
+- **Decision:** From the trap's settings file on its card: its latitude and longitude are entered
+  in `trap.cfg` when the trap is set up, and the trap keeps them with its records.
+- **Reason:** The Camtrap DP export requires the coordinates of every trap site, and the trap does
+  not know where it stands. With the coordinates on the card they travel with the trap's records,
+  and the daily summary can carry them as the FieldMesh readings table has fields for them. The
+  accepted costs: the coordinates must be known before the card goes into the trap, and the trap's
+  settings reader, which rejects keys it does not know, must learn them.
+- **Rejected:** A settings file for the season on the computer, beside the card copy (no firmware
+  change, but the coordinates live apart from the trap's records); typing them in at each export
+  (typed again every time, easy to get wrong).
+- **Replaces:** 67, in that the season folder holds no `season.cfg`.
+
+## 82. Do people sort a pass at once, or each picture on its own?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** A pass at once: the review page shows a pass's pictures side by side, the person
+  picks the group and adds the name once, and both are stored for every picture of the pass. A
+  single picture can still be marked empty or "can't tell", and a pass with two different animals
+  can be labelled picture by picture.
+- **Reason:** A pass has up to six pictures, about three on average; labelling once saves about two
+  thirds of the clicks, and every picture still carries the label a later model learns from.
+- **Rejected:** Each picture on its own (about three times the clicks, mostly repeating the same
+  answer).
+
+## 83. What do the daily summary and the export do with the trap's coordinates?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** The daily summary carries the latitude and longitude from the trap's settings in
+  FieldMesh's fields for them, empty when not set. A trap without coordinates still runs; only the
+  export of its season stops and says what is missing.
+- **Reason:** FieldMesh readings have latitude and longitude fields, so the summary can place the
+  trap without a change to FieldMesh; Camtrap DP requires the coordinates, but missing ones must not
+  stop a trap from recording.
+- **Rejected:** Leaving the coordinates out of the summary (FieldMesh would not know where the trap
+  stands); a trap that refuses to start without coordinates (a forgotten entry would cost a season).
+
+## 84. Is "can't tell" kept as a label?
+- **Date:** 2026-11-20
+- **Step:** propose
+- **Decision:** Yes. A picture a person marks "can't tell" is stored as reviewed without a group.
+- **Reason:** A test run must be sorted in full before it is evaluated (entry 79); without this
+  mark, a picture nobody looked at and one nobody could tell look the same.
+- **Rejected:** Not storing it (an unfinished run cannot be told from a finished one).
+
+## 85. Does every trap have a link from the start?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. Every trap has a mobile-network modem from version 1, built after the user's
+  Auris recorder, and sends to FieldMesh on its own, with no hub on the site. Letting the trap feed
+  FieldMesh on its own, until now a later change (issue #1), becomes part of this change.
+- **Reason:** Raised by the user after the stakeholder summary: the trap needs connectivity from the
+  start, with a modem in each trap as in Auris. A trap that reports shows a fault within a day
+  instead of at the end of the season, and its results reach FieldMesh without a visit. The accepted
+  cost: each trap gains a modem, a SIM and a data plan in its cost, and power for every connection;
+  at sites without coverage it gains nothing.
+- **Rejected:** Version 1 without radio (a fault early in the season goes unseen until the visit).
+- **Replaces:** 51 (in the radio: no radio in version 1 becomes a mobile-network modem in every
+  trap; the daily state summary on the memory card stays).
+
+## 86. How often does the trap send?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Once a day: the day's pass records and the state summary in one connection. How
+  often can be changed in the trap's settings, for example to send more often during the pilot.
+- **Reason:** Enough to catch a fault within a day and keep results current. By rough estimate, not
+  measured, a connection in good coverage costs about 1 to 2 mAh, so once a day adds a few percent
+  to the trap's daily use of about 25 to 30 mAh, where every hour would roughly double or triple
+  it. The accepted cost: results reach FieldMesh up to a day late.
+- **Rejected:** Every hour (roughly doubles or triples the trap's daily energy by estimate, more in
+  weak coverage, and needs a larger pack and panel).
+
+## 87. Does the trap take anything back over the link?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes: new settings, such as how often to send and pilot mode, and signed firmware
+  updates, as in Auris.
+- **Reason:** A trap stands three to six months without a visit, and version 1 firmware will have
+  faults that only the pilot finds; updates over the air fix them without visits, and the model on
+  the trap reaches the traps the same way. The accepted cost: the most work of the options, and an
+  update needs a safe way back to the firmware before it, or a bad one stops a trap in mid-season.
+- **Rejected:** Settings only (every firmware fix and every new model needs a visit to every trap);
+  nothing (nothing can be corrected from afar for a whole season).
+
+## 88. What leaves the trap over the link?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Only results: the pass records and the daily state summary, never pictures. The
+  pictures stay on the memory card.
+- **Reason:** The user's choice in the brainstorm: send the inference, not photos. Results are
+  small, so each connection stays short. The accepted cost: nobody far away can check the trap's
+  own judgement that its view is clear, or look at a surprising record.
+- **Rejected:** Also sending one small picture of the empty passage a day, a few kilobytes, so a
+  person can see a dirty lens or a blocked passage from afar (turned down without a note).
+
+## 89. What happens where there is no coverage?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The memory card stays the full record. Without coverage the trap works exactly as
+  without a modem, and sends what is waiting once it gets through.
+- **Reason:** Survey sites are anywhere (entry 12), many with patchy coverage; nothing is lost when
+  the link fails.
+- **Rejected:** The link as the main store, with the card only as a buffer (records would be lost
+  at sites with poor coverage).
+
+## 90. Does the trap have a satellite link?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Not in this change; sites with no coverage at all rely on the memory card.
+- **Reason:** A satellite modem adds cost and power; the California bucket-trap trial shows that
+  one can be added later where needed.
+- **Rejected:** Room on the board for a satellite modem from the start (cost and board space for a
+  part not yet needed).
+
+## 91. Where does the trap sit in the fence?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** In the fence line or at a fence end; the same unit serves both, and the survey
+  chooses.
+- **Reason:** The user: the concept is the same wherever the bucket sits; animals walk through it
+  and trigger the camera. Cameras at fence ends (AHDriFT) are a layout surveys already use. The
+  accepted cost: two placements to test and to report, and a pass's direction means something
+  different in each: which side of the fence, or along the fence.
+- **Rejected:** In the fence line only (as planned until now; the user does not want the placement
+  tied down).
+- **Replaces:** 27 (the passage set into the fence line becomes a choice between the fence line and
+  a fence end).
+
+## 92. How is a pass's direction read in either placement?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The trap's settings note whether it sits in the fence line or at a fence end, and
+  which way its first opening faces, so each pass's direction can be read.
+- **Reason:** With one unit for both places, a direction means nothing without its placement.
+- **Rejected:** The placement noted only on the field sheet (it gets separated from the records).
+
+## 93. Does the model on the trap come into this change?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. A first model on the trap gives each pass a type of animal, not a species, and
+  how sure it is. It is trained on pictures from others, such as the pictures from above that
+  California's wildlife agency took in upturned buckets at drift fences, and checked on the trap's
+  own bench pictures before it goes on the traps. Its result travels with the pass records. A model
+  on a computer stays out.
+- **Reason:** Chosen on the round 1 page against the recommendation, without a note. The user sees
+  the model on the trap as part of the idea, and the link is to send its results rather than
+  pictures; training on others' pictures gets round the lack of named pictures of the trap's own.
+  The accepted cost: it depends on pictures not yet known to be available, colour daylight pictures
+  may not carry over to the trap's infrared ones, and version 1 takes longer.
+- **Rejected:** The model in a later change, with the link leaving room for its result (until then
+  the link would report only that something passed, which way and how big, not what it was).
+- **Replaces:** 75 (in part: a learned model on the trap comes into this change; a model on a
+  computer stays out).
+
+## 94. How large are the pack and the panel?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** They grow as far as the modem and the model need; their size is set in the design
+  step.
+- **Reason:** The modem adds power for every connection, and the user said bigger batteries are
+  fine.
+- **Rejected:** Keeping the two-cell pack and limiting how often the trap sends (the battery would
+  decide how useful the link is).
+- **Replaces:** 53 (two 18650 cells becomes a pack sized in the design step for the modem and the
+  model).
+
+## 95. What does the proposal say about the closest existing traps?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** It adds the California upturned-bucket cameras (Pepperwood Preserve, UC Nature,
+  California's wildlife agency) to the prior art, and states what this trap adds: lasers that
+  notice cold animals, the direction and size of each pass, months on solar, a modem in every
+  trap, and a model on the trap.
+- **Reason:** They are the closest traps known, found in the brainstorm after the stakeholder
+  summary; a reviewer who knows them would ask. As with the light-beam trigger (entry 8), the
+  proposal states what this trap adds and claims no first.
+- **Rejected:** Leaving the prior art as it is (the closest traps would be missing).
+
+## 96. Which types does the first model tell apart?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Frog or toad, lizard, snake, other animal, and empty. Newts, salamanders and turtles
+  count as other until the trap's own named pictures teach the model them, by a later update.
+- **Reason:** The free pictures from others, taken from above at drift fences, hold thousands of
+  each of these types (about 130,000 lizard, 67,000 snake and 22,000 frog or toad pictures), but no
+  newts, about 300 salamanders and about 900 turtles; each type the first model learns can be
+  checked fairly. The accepted cost: newts, central to European surveys, show only as other in the
+  first model, and frog and toad stay together.
+- **Rejected:** The seven groups people use, plus empty (the model would be weakest exactly where
+  pictures are missing, or wait for the trap's own).
+
+## 97. What may the model's result do on the trap?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** It only labels: the type and how sure the model is go into the pass record and over
+  the link. The model deletes nothing, and the filter on the trap stays as planned.
+- **Reason:** A model checked only on bench pictures should not decide what is kept; its mistakes
+  can be counted against the pictures. The accepted cost: the card keeps empty pictures the model
+  could have recognised.
+- **Rejected:** Also dropping pictures the model is sure are empty, outside pilot mode (its
+  mistakes would delete animals that nobody can count afterwards).
+
+## 98. Do people see the model's type while they sort?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Not in pilot mode: there people sort without seeing it, so their groups check the
+  model. Outside the pilot it shows as a suggestion that people confirm or change.
+- **Reason:** People tend to follow a suggestion; hiding it in the pilot gives an honest measure of
+  the model, and later surveys get the time saved. The accepted cost: sorting the pilot takes as
+  long as without a model.
+- **Rejected:** Always shown (the pilot could no longer tell how good the model is); never shown
+  (sorting would never get faster).
+
+## 99. What if the model is not good enough in time?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The trap goes into the field without a model, and the model follows by update once
+  it passes its check, trained further on the trap's own named pictures.
+- **Reason:** The trap first, as the user set the order; with updates over the air (entry 87), a
+  later model costs no visit. The infrared gap may hold the model back: in the pictures from others,
+  lizards and snakes are almost only in daytime colour, while the trap takes infrared. The accepted
+  cost: the first field weeks may report no animal types.
+- **Rejected:** Version 1 waits for the model (the field season, and with it the pictures that
+  would improve the model, slips).
+
+## 100. When is the model good enough to go on the traps?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The model's targets are set from the controlled tests and fixed before the field
+  phase, like the trap's own (entry 36).
+- **Reason:** The same rule as for the trap; a number set now would be a guess.
+- **Rejected:** A fixed bar now, such as the right type for nine in ten usable pictures (set
+  without any data on what is reachable).
+
+## 101. Do the results measure the model?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. Beside trigger, usable picture and identification, the results report how
+  often the model's type matches the group a person gave.
+- **Reason:** The model's quality is measured the same way as the rest of the trap.
+- **Rejected:** Measuring the model outside the trap's results (two places to look, and the model
+  could pass unmeasured).
+
+## 102. Does a pass record say which model judged it?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. Each pass record names the model version that judged it.
+- **Reason:** Results stay traceable after a model update.
+- **Rejected:** The version only in the daily summary (a pass could not be tied to its model when
+  an update arrives in mid-day).
+
+## 103. Who trains the first model, and where?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The project trains it on a computer. The FieldMesh tools to check data, train
+  models and upload them to devices stay a later change (FieldMesh issue 97). A model that sorts
+  pictures on a computer stays out too (entry 93).
+- **Reason:** Keeps this change to the trap; the FieldMesh issue already holds those tools.
+- **Rejected:** Building the FieldMesh tools in this change (a second system to build before the
+  trap has run a season).
+
+## 104. Which modem goes in the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The Quectel EG810M-EU, Auris's modem, with Auris's 3.9 V supply, nano-SIM holder and
+  antenna design. A driver for it is written for the trap, so that Auris can share it later.
+- **Reason:** Chosen on the round 1 page of propose against the recommendation, without a note. It
+  keeps the trap and Auris on one modem, as entry 85 has the modem built after Auris. The accepted
+  cost: no driver for it exists in the user's projects, so one must be written before the trap can
+  send; the FieldHub's upload rules (batches, confirmation, retries) are reused above it. It is
+  approved for Europe, Australia and New Zealand only.
+- **Rejected:** The SIMCom A7670G, the FieldHub's modem with a working driver and a global module
+  (the trap and Auris would differ).
+
+## 105. How do pass records reach FieldMesh?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As readings, from the start: each pass is a reading of the trap with its own time
+  and sequence number and trap keys with flat values (direction, beam heights, what noticed it, the
+  model's type, how sure it is, the model version). FieldMesh models these keys later.
+- **Reason:** FieldMesh has no place for pass records but stores reading keys it does not model, so
+  the trap can send from its first day. The trap sends right after its daily summary, so the summary
+  stays the trap's newest reading. The accepted cost: until FieldMesh models the keys, passes are
+  missing from its CSV export and its views treat them like sensor values.
+- **Rejected:** A pass type in FieldMesh first (the trap's link would wait for FieldMesh work in
+  another repository).
+
+## 106. How does a new model reach the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As a separate model file on the memory card, signed with the release key and checked
+  before use, with its own update path over the link. The trap keeps the model it has when a new
+  one fails its check or does not load. Until FieldMesh can release model files to devices, a model
+  is copied onto the card at a visit or on the bench.
+- **Reason:** Chosen on the round 1 page of propose against the recommendation, without a note. A
+  model file of its own can change without a firmware release, and the model version stays
+  separate from the firmware's. The accepted cost: a second update path, in the trap and in
+  FieldMesh, built before any model exists; FieldMesh can release only firmware today.
+- **Rejected:** The model built into the camera controller's firmware, a new model being a signed
+  firmware update (every new model a whole firmware download of about 2 MB, model and firmware
+  released together).
+
+## 107. How is a trap known to FieldMesh?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Each trap is registered as a hub of its own, with its own upload key and one node,
+  itself.
+- **Reason:** Works with FieldMesh's devices as they are.
+- **Rejected:** A new kind of device in FieldMesh for traps (FieldMesh work before the trap can
+  send).
+
+## 108. How do settings come back to the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As FieldMesh commands in the reply to an upload, confirmed the way the FieldHub
+  confirms them. FieldMesh needs a new command type for trap settings.
+- **Reason:** FieldMesh's existing way back to devices; no second channel.
+- **Rejected:** A settings file the trap fetches from a web address (a second channel to secure and
+  keep).
+
+## 109. How are firmware updates installed?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As on the FieldHub: a manifest signed with the release key, the image written to the
+  spare slot and checked, and a fall-back to the old firmware when the new one does not confirm
+  itself. The fall-back is proven on the ESP32-S3 on the bench.
+- **Reason:** The user's existing signed path; only the chip is new. It has run on the classic ESP32
+  but not on the ESP32-S3 or over the mobile network with the real key.
+- **Rejected:** A new update scheme for the trap (more to build and prove).
+
+## 110. Does the trap check FieldMesh's server certificate?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Yes, unlike the FieldHub today.
+- **Reason:** Otherwise the upload key and the update path can be intercepted.
+- **Rejected:** No check, as on the FieldHub (an intercepted key lets others upload as the trap).
+
+## 111. Where does the FieldMesh side get built?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** One FieldMesh issue collects what the trap needs there: a command for trap settings,
+  a release role for trap firmware, a way to release model files to traps (entry 106), and modelling
+  the pass keys. Until it is done, the trap sends but takes nothing back.
+- **Reason:** Keeps FieldMesh work in its own repository; the trap is not blocked from sending.
+- **Rejected:** Building the FieldMesh side in this change (another repository, with its own
+  workflow).
+
+## 112. How long does the trap try to connect?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** About three minutes; then it records a link fault and tries again at the next
+  sending time.
+- **Reason:** Weak coverage must not drain the battery.
+- **Rejected:** Trying until it gets through (a trap at the edge of coverage could empty its pack).
+
+## 113. Where does the trap's clock come from?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The trap sets its clock from FieldMesh's server time at each send.
+- **Reason:** FieldMesh sends the time with every reply, so the clock no longer drifts over a
+  season.
+- **Rejected:** Setting the clock only at setup (drift over six months shifts pass times).
+
+## 114. Where does the modem's antenna sit?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** On the solar panel's stake, above the vegetation, with a cable to the trap.
+- **Reason:** Inside the bucket at ground level the signal is weakest.
+- **Rejected:** A flexible antenna inside the hood, as in Auris (weak signal at ground level).
+
+## 115. Which firmware is updated over the link?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Only the camera controller's; the beam watcher's firmware changes at a visit.
+- **Reason:** The watcher's logic is small and tested; updating it remotely needs extra wiring and a
+  second fall-back.
+- **Rejected:** The camera controller also reprogramming the watcher (wiring and a fall-back for a
+  rarely changed part).
+
+## 116. How large is the pack?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Two 18650 cells in parallel, as before. With the modem and the model the estimate
+  rises to about 35 to 45 mAh a day, still more than five months without sun; the bench measures
+  it.
+- **Reason:** The same pack as Auris; the estimate leaves room, and entry 94 lets it grow if the
+  bench measures more.
+- **Rejected:** Three or four cells now (cost and space for a load not yet measured).
+
+## 117. What runs the model on the trap?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** TensorFlow Lite Micro, with the model in 8-bit form, which works with the Arduino
+  framework on the ESP32-S3.
+- **Reason:** Fits the firmware's tools.
+- **Rejected:** Espressif's ESP-DL (needs ESP-IDF, against the firmware's framework).
+
+## 118. How is the first model trained?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** With Keras in a new `model/` folder, on the free pictures from California, Ohio,
+  Indiana and the Australian set turned grey, then fine-tuned and checked on named bench pictures
+  kept apart from training.
+- **Reason:** Keras gives the 8-bit model for the trap directly; the bench pictures close the gap
+  between others' colour pictures and the trap's infrared ones.
+- **Rejected:** PyTorch, converted for the trap (an extra conversion step that can change the
+  model).
+
+## 119. How does the trap sit at a fence end?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** As in the fence line, with a short piece of fence, about a bucket's width, beyond
+  it; the sides of the fence keep their meaning.
+- **Reason:** The same joints and the same directions in both placements; animals on either side
+  are led to an opening.
+- **Rejected:** The passage continuing the fence, with two short wings leading into one end
+  (different joints, and directions that mean something else).
+
+## 120. How do the settings describe the placement?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The settings note the placement as in the fence line or at a fence end, and describe
+  side A in words, such as "pond side".
+- **Reason:** Words are what surveyors write down; a bearing means little for "which side".
+- **Rejected:** Side A as a compass bearing.
+
+## 121. How does the review page know a pass was recorded in pilot mode?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** Each pass record notes whether the trap was in pilot mode; the review page hides the
+  model's type for those passes.
+- **Reason:** Pilot mode can change over the link in mid-season.
+- **Rejected:** Reading pilot mode once for the whole season from the card's settings (wrong for a
+  season that changed mode).
+
+## 122. What does the Camtrap DP export do with the model's types?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** It uses people's groups and names; a pass nobody has sorted gets the model's type,
+  marked as classified by machine with how sure the model was.
+- **Reason:** Camtrap DP has fields for machine classifications, so nothing is passed off as a
+  person's.
+- **Rejected:** People's labels only, with unsorted passes left unclassified.
+
+## 123. Where does the logic live that plans a send?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** In the libraries, tested on the computer: `uplink` reads and writes
+  `state/sent.cfg` and gains a send plan that yields a send's readings in order, unconfirmed passes
+  by survey day and line and then the summaries last, gives each pass its seqNum from the confirmed
+  position, moves the position past each confirmed batch and goes back to it for a resend;
+  `records` gains the reading of a stored pass line, so that a stored pass is sent through the same
+  pass reading.
+- **Reason:** The design's interfaces named only the confirmed position's struct, while the
+  scenarios of a day without coverage and a send that breaks off, and the summary sent last, need
+  this logic; in the libraries they are tested on the computer, and the send job on the board only
+  reads files and posts.
+- **Rejected:** The logic in the send job on the board (its scenarios checked only on the bench).
+
+## 124. How does the trap confirm FieldMesh's commands?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** As the FieldHub does: each command keeps FieldMesh's command ID with its cursor, the
+  reply's next cursor is kept, and a refused settings command is reported with FieldMesh's outcome
+  `INVALID`, an accepted one with `ACCEPTED`.
+- **Reason:** FieldMesh confirms commands by their ID and knows no outcome `REJECTED`; the design's
+  command held only a cursor, type and payload.
+
+## 125. How does the trap's filter tell a picture from the empty view?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** By the largest difference over small overlapping patches of the greyscale
+  thumbnails, as the sorting tool marks empty pictures, instead of the difference averaged over
+  the whole picture; a new task changes what the filter's task built.
+- **Reason:** A 3 cm animal covers about one percent of the view: averaged over the whole picture
+  it comes out at about 0.0014 against a threshold of 0.03, so outside pilot mode a small warm
+  animal noticed by the PIR sensor alone could lose its pictures, while the spec keeps a picture
+  when unsure. Patch by patch the same animal comes out at 0.056 or more.
+- **Rejected:** Keeping the whole-picture average until the bench shows whether it drops pictures
+  (small animals' pictures at risk until then, and two measures for one question).
+
+## 126. Where are bucket animals matched to passes, and how do they become labels?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** One function matches the animals of `bucket_checks.csv` to passes by the design's
+  rule, next to the reading of that file, both built with the label store; the command
+  `trapsort bucket <season> <bucket_checks.csv>` stores each matched identification as a bucket
+  label, and evaluation uses the same matching.
+- **Reason:** The design gave the rule but named no function or command; one matching serves
+  labels and results alike, and the labels for the model are there as soon as the checks are
+  entered.
+- **Rejected:** Matching and storing bucket labels only when `trapsort evaluate` runs (labels wait
+  for an evaluation, and evaluating would also write labels).
+
+## 127. Where do an exported season's project title and contact come from?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** They are typed at the export, both required:
+  `trapsort export <season> --project <title> --contact <name>`.
+- **Reason:** Camtrap DP requires a project title and at least one contributor, and neither is on
+  the trap's card; a project and a person belong to the survey, not to a trap.
+- **Rejected:** A `project.cfg` in each season folder (one more file to know and write for every
+  season); a title made from the trap's name and contributors from the labels (a package that
+  looks complete but names no real project or contact).
+
+## 128. Where does an exported package sit?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** In the season folder, next to `card/`: `datapackage.json` and the three tables,
+  naming each picture as `card/pictures/<day>/<file>`.
+- **Reason:** Camtrap DP allows a picture's path only inside the package's folder or as a web
+  address, and a season holds up to about 27 GB of pictures; this way nothing is copied and the
+  package stays next to the data it describes.
+- **Rejected:** A package elsewhere with copies of the pictures (tens of gigabytes at every
+  export); pictures named by their full file address (valid only on one computer).
+
+## 129. How is the hardware proven before the custom boards are drawn?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Before any custom board is drawn, the whole chain is built on ready-made
+  development boards: the beams, the beam watcher, waking the camera controller, the pictures and
+  the card, read by the sorting tool.
+- **Reason:** The user wants to know the hardware does what it should before paying for a custom
+  board; the wake time only shows end to end, and the sorting tool, already built, gets a real
+  card. The accepted cost: development boards waste current, so the season's power can only be
+  added up from each part's measured current.
+- **Rejected:** Testing the risky parts on separate rigs (the wake time only shows end to end);
+  drawing the custom boards first and running the bench tests on them, as planned until now (a
+  fault found on the bench means a new board).
+
+## 130. Which chips does the prototype use?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The trap's own chips: an ESP32-S3 development board as camera controller, an
+  ATtiny3216 on a small breakout board as beam watcher, laser diodes and photodiodes on strip
+  board in the printed beam walls.
+- **Reason:** What the prototype measures holds for the trap only on the same chips, and the
+  firmware moves to the custom board with only its pins changed.
+- **Rejected:** Whatever is quickest, such as the old prototype's ESP32 and OV2640 with an Arduino
+  board as beam watcher (results on other chips say little about the trap; the firmware is
+  written twice).
+
+## 131. What must the prototype show before the custom boards are drawn?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Every bench test of the plan runs on the prototype first, the roof laser, a side
+  view and colour included.
+- **Reason:** Chosen on the round 1 page against the recommendation to run first only the tests
+  whose answers change the board; the user wants the hardware settled as a whole before the board.
+  The accepted cost: weeks more before the board.
+- **Rejected:** Only the tests whose answers change the board (beams, pictures, wake time, camera,
+  light, PIR sensor, model time), the rest on the board; only showing that the chain works, the
+  detailed tests on the board (the board drawn before beams, camera and wake time are known to be
+  good enough).
+
+## 132. Is the mobile modem part of the prototype?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** No: the prototype records to its card only, and the modem is first tried on the
+  custom board, with the Auris design copied over.
+- **Reason:** Chosen on the round 1 page against the recommendation; the modem follows a known
+  design. The accepted cost: a fault in the modem part or its power shows only once the board is
+  made, and a send's energy stays an estimate until then.
+- **Rejected:** The modem on an Auris board or an evaluation board in the prototype, with its
+  driver written and a send measured before the board.
+
+## 133. How is power measured before the custom boards?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** On the prototype each part's current and the energy of a pass, a picture and a
+  model run are measured, and the battery is sized from them before the board; the four-week run
+  for the season comes on the custom board.
+- **Reason:** Only the parts' own currents mean something on development boards, which waste
+  current on regulators and lights.
+- **Rejected:** Leaving the power budget an estimate until the custom board runs.
+
+## 134. Where do the prototype's parts sit?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The printed insert is built first and holds the beam walls and the camera; the
+  development boards sit outside the bucket, wired in.
+- **Reason:** Beams and camera are tested in the real passage, while the boards stay easy to reach
+  and change.
+- **Rejected:** A bench frame without a bucket for the prototype, the insert later.
+
+## 135. What does the prototype give for a pitch?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The material for a pitch is the bench results with their pictures and numbers, and
+  a bench run exported through the sorting tool; a pitch itself is not part of this change.
+- **Reason:** The bench results are what a pitch would rest on; writing the pitch is separate work,
+  as a funding application is.
+- **Rejected:** A pitch summary written as a task of this change.
+
+## 136. Which camera goes on the prototype?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** An OV5640 module made for the ESP32-S3's 24-pin parallel camera connector, without
+  infrared filter, as the design names; the user orders one.
+- **Reason:** The user's OV5647 module is made for a Raspberry Pi and sends its picture over MIPI,
+  which the ESP32-S3 cannot take, and Espressif's camera driver does not support it; with the
+  OV5640 the pictures and the wake time are those of the trap.
+- **Rejected:** Picture tests on a Raspberry Pi with the OV5647 and another camera for the chain
+  (picture results for a sensor and computer the trap will not have); an ESP32-P4 as camera
+  controller, which reads MIPI cameras (reopens the chip choice, draws more power, less mature
+  tools).
+
+## 137. Is the model's speed measured on the prototype?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes: a test model's time per picture on the ESP32-S3 is measured on the prototype
+  before the custom board is drawn.
+- **Reason:** It decides whether the board needs a helper chip for models; not a bench test of the
+  plan until now, but an answer that can change the board.
+- **Rejected:** Measuring it on the custom board.
+
+## 138. What comes first now?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The prototype and its bench tests come first; the remaining tasks that need only a
+  computer (the written checks of the passage, the model project) follow.
+- **Reason:** The user wants bench-tested hardware, enough to pitch a fully formed idea, before
+  anything else; the sorting tool and the trap's logic that read and write its records are built.
+- **Rejected:** Finishing the tasks that need only a computer first, as chosen until now.
+
+## 139. Which board is the prototype's camera controller?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The user's ESP32-S3-WROOM camera board, with a microSD slot and a 24-pin camera
+  connector; that it has PSRAM (a module marked N8R8 or N16R8) and that its camera supply feeds an
+  OV5640 are checked at bring-up.
+- **Reason:** It is at hand and carries the camera connector and card slot the chain needs.
+- **Rejected:** Buying another ESP32-S3 camera board before the one at hand is checked.
+
+## 140. What follows if the ESP32-S3 is too slow for the model?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The first board still gets no helper chip for models; its traps go out without the
+  model and get it by update, and a later board revision may add a helper chip. The prototype's
+  measurement tells this before the first board, as entries 74, 99 and 137 read together.
+- **Reason:** Entry 74 allows a helper chip only with a later board revision, and the proposal
+  keeps it out of scope; measuring early tells whether the first boards' traps run the model.
+- **Rejected:** A helper chip on the first board when the test fails (against entry 74 and the
+  proposal's scope).
+
+## 141. How does the firmware run on the prototype?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The watcher and camera firmware projects each gain an environment for the
+  development boards, with that board's pins in one header; the trap's own boards get their own
+  environments later.
+- **Reason:** Entry 130 chose the trap's chips so that the firmware carries over; only pins differ.
+- **Rejected:** Separate firmware for the prototype (written twice).
+
+## 142. Where are the prototype's parts and wiring written down?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** In `hardware/prototype/`: the parts list, the wiring list and the bring-up
+  checklist.
+- **Reason:** Next to the insert and the boards, where the trap's hardware lives.
+- **Rejected:** In `docs/testing/` (that folder holds procedures and results, not hardware).
+
+## 143. How is the battery sized before the trap's own board exists?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** From the parts' currents and the energy of a pass, a picture and a model run
+  measured on the prototype, plus Auris's estimate for a daily send at its upper end, 13 mAh; the
+  energy per send is measured on the trap's own board.
+- **Reason:** The modem is first tried on the trap's own board (entry 132), so a send cannot be
+  measured before it; the upper end of the estimate keeps a margin.
+- **Rejected:** Sizing the battery only after the trap's own board runs.
+
+## 144. Which OV5640 module goes on the prototype?
+- **Date:** 2026-11-21
+- **Step:** propose
+- **Decision:** The user's own OV5640 5 MP module, once bring-up shows that it fits the board's
+  24-pin connector and has no infrared filter (it sees an infrared remote control's light); if it
+  fails either, one without filter for the 24-pin connector is ordered.
+- **Reason:** The user already has an OV5640 module; many come with an infrared filter, which would
+  blind the camera to its own infrared flash.
+- **Replaces:** 136 in part (the module the user orders becomes the user's own, if it passes).

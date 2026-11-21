@@ -2,15 +2,18 @@
 
 ## Decisions
 
-### A passage through an upturned bucket, set into the fence line
+### A passage through an upturned bucket, in the fence line or at a fence end
 An upturned standard bucket of about 30 cm diameter (about 20 litres) forms the dark hood. A
 3D-printed insert carries a passage 15 cm wide and about 26 cm long across the bucket, its floor
 flush with the ground at both ends, the beam walls, the camera, the light and the electronics. The
-fence ends meet openings cut in two opposite sides of the bucket. Entries 27, 43, 54 and 55;
-[ADR](adr/bucket-with-printed-insert.md).
+fence ends meet openings cut in two opposite sides of the bucket. At a fence end the trap sits the
+same way, with a short piece of fence, about a bucket's width, beyond it, so side A and side B keep
+their meaning. `trap.cfg` notes the placement and describes side A in words. Entries 43, 54, 55,
+91, 92, 119 and 120; [ADR](adr/bucket-with-printed-insert.md).
 Rejected: a purpose-built housing (costly in small numbers, repairable only with the maker's
 parts); a channel with a box on top (more fitting and sealing); a raised threshold (animals must
-climb).
+climb); at a fence end, the passage continuing the fence with two wings into one end (other joints,
+other directions).
 
 ### Beam points at both ends, beams at three heights
 One beam point about 2 cm inside each end of the passage, each with beams at 4, 12 and 25 mm above
@@ -36,51 +39,151 @@ Rejected: the ESP32-S3's co-processor alone (limited; watching may pause); the p
 (test bench only, entry 5).
 
 ### Camera, light and pictures
-An OV5640 module without an infrared-cut filter, with a fixed-focus lens of about 75 degrees set to
-the floor about 20 cm below, gives an estimated 8 to 10 pixels per millimetre across the 15 by 26 cm
-floor. Every picture is lit by 940 nm LEDs flashed with the exposure, with fixed exposure settings,
-so pictures do not depend on daylight and no visible light is used. A pass gets a picture as soon
-as the camera is ready, then one every half second while the animal is in the passage, at most six.
-If the bench shows the camera wakes too slowly, it stays on standby instead. Entries 38, 44, 45, 57
-and 58.
-Rejected: the OV2640 (two megapixels, weak in low light); 850 nm light (faint red glow); white
-light (startles animals); one picture per pass.
+A 5 megapixel camera module without an infrared-cut filter, an OV5640, with a fixed-focus lens
+whose focal length is chosen for the camera's height so that the view just covers the 15 by 26 cm
+floor at about 10 pixels per millimetre; the lens is focused once at the trap and fixed. The
+camera's height, between about 20 and 30 cm, and the module, one with a ribbon cable or one with a
+screw-in M12 lens, are settled on the bench by depth of field and light: at f/2 the sharp zone
+reaches about 3 cm above the floor at 20 cm and about 4.5 cm at 30 cm (estimates). Every picture is
+lit by infrared LEDs flashed with the exposure, with fixed exposure settings, so pictures do not
+depend on daylight and no visible light is used. The board takes 940 nm or 850 nm LEDs in the same
+place; 940 nm is the default, and the bench decides. A pass gets a picture as soon as the camera is
+ready, then one every half second while the animal is in the passage, at most six. If the bench
+shows the camera wakes too slowly, it stays on standby instead. Entries 38, 44, 57, 58, 76 and 77.
+Rejected: the OV2640 (two megapixels, weak in low light); autofocus (a delay on every picture, a
+motor in the damp, unreliable in infrared light); white light (startles animals); one picture per
+pass.
+
+### A model on the camera controller types each pass
+After the pictures of a pass are written, the ESP32-S3 runs the model with TensorFlow Lite Micro,
+8-bit, on each stored picture shrunk to about 160 by 96 grey pixels (the bench may change the
+size). Each picture gets a score for empty, frog or toad, lizard, snake and other animal. The pass
+gets the surest animal type when any picture's animal score reaches a minimum, otherwise empty; its
+score is how sure the model is. Type, score and model version go into the pass record; the model
+deletes nothing, and the filter alone decides what is kept. The model is a file on the card,
+`model/model.tflite` with its signed manifest, loaded at start; without one, or when it fails its
+check or does not load, the type stays empty and the trap records as before. A test model's time
+per picture is measured on the prototype before the first board; if the ESP32-S3 is too slow, the
+first board still has no helper chip, its traps go out without the model, and a later board
+revision may add one. Entries 74, 93, 96, 97, 99, 102, 106, 117, 137 and 140;
+[ADR](adr/image-models-on-the-camera-controller.md).
+Rejected: ESP-DL (needs ESP-IDF); the model built into the firmware; the model dropping pictures; a
+helper chip such as the MAX78000 or a vision chip such as the STM32N6.
+
+### The first model is trained with Keras on free pictures
+A Python project in `model/` downloads the drift-fence pictures from above that others published
+(California, Ohio and Indiana Small Animals on LILA, and the Australian SAWIT set), maps their
+labels onto the model types (newts, salamanders and turtles to other animal), turns them grey,
+trains a small network with Keras, and exports it 8-bit for TensorFlow Lite Micro. It is then
+fine-tuned on named bench pictures from `trapsort` seasons and checked on others kept apart from
+training; it goes on the traps only once it meets its targets, set from the controlled tests. A
+model card lists the sources and their licences, which ask for credit. The project signs a released
+model with the release key, in the FieldHub's manifest format with the role `trap-model`. Entries
+96, 100, 101 and 118; [ADR](adr/model-trained-with-keras.md).
+Rejected: PyTorch converted for the trap (an extra step that can change the model); training only
+on others' colour pictures (they barely show lizards and snakes in infrared).
+
+### A mobile modem sends to FieldMesh once a day
+The main board carries Auris's modem design: a Quectel EG810M-EU on a 3.9 V TPS63020 rail that is
+switched off between sends, a nano-SIM holder, and an SMA socket for a cable to an antenna on the
+solar panel's stake. A driver for the EG810M-EU is written for the trap; the FieldHub's upload rules
+are reused above it. In FieldMesh the trap is a hub of its own with one node, itself, and its own
+upload key. Right after the daily summary, the trap powers the modem, connects over HTTPS, checking
+FieldMesh's certificate, and posts every unconfirmed reading in batches of at most 100: each pass as
+a reading with trap keys, and the summary last, so the summary stays the newest reading. A batch
+counts as confirmed only when FieldMesh's reply gives its full count; the position of the last
+confirmed reading is kept on the card, so a failed or broken send is repeated at the next one.
+Recording never waits for a send. A send gives up after `link_timeout_s` (180 s) and records a
+link fault. Each reply sets the clock from FieldMesh's server time. How often to send is
+`send_every_h` in `trap.cfg` (24). Entries 85, 86, 88, 89, 104, 105, 107, 110, 112, 113 and 114;
+[ADR](adr/trap-sends-to-fieldmesh-as-a-hub.md).
+Rejected: the SIMCom A7670G with the FieldHub's driver; a pass type in FieldMesh first; trying until
+connected; no certificate check; an antenna inside the hood; a satellite link.
+
+### Settings, firmware and models come back over the link
+Commands arrive in the reply to an upload and are confirmed as the FieldHub confirms them. A trap
+settings command is checked by the same rules as `trap.cfg`; valid settings are written to
+`trap.cfg` and used, invalid ones refused, and the result goes with the next upload. Firmware
+updates work as on the FieldHub: a manifest signed with the release key (Ed25519), the image
+written to the spare app slot and checked by size and SHA-256, and the bootloader's fall-back when
+the new firmware does not confirm itself after its first full wake. A model update downloads a
+signed manifest and model file to the card and swaps it in only after the check passes. Only the
+camera controller is updated; the beam watcher changes at a visit. Until FieldMesh has the settings
+command and release roles for trap firmware and models (see Outside this repository), the trap sends
+but takes nothing back, and a model reaches it on the card. Entries 87, 106, 108, 109, 111 and 115;
+[ADR](adr/signed-updates-over-the-link.md).
+Rejected: a settings file fetched from a web address; a new update scheme; the camera controller
+reprogramming the watcher.
+
+### Chips JLCPCB can assemble
+Every chip on the trap's boards is one JLCPCB can assemble: from LCSC's stock where it has it,
+otherwise ordered in through JLCPCB's global sourcing. Plug-in parts such as the camera module and
+the cells may come from anywhere. Entries 72 and 73; [ADR](adr/chips-assembled-by-jlcpcb.md).
+Rejected: LCSC's stock only (rules out most chips for image models; thin stock of some parts).
+
+### The hardware is proven on development boards first
+Before the trap's own boards are drawn, the whole chain runs on ready-made development boards with
+the trap's chips: the user's ESP32-S3-WROOM camera board with its microSD slot and an OV5640 module
+without infrared filter, an ATtiny3216 on a SOIC-20 adapter board programmed over UPDI, laser
+diodes and photodiodes on strip board in the printed beam walls, infrared LEDs with their driver, a
+PIR sensor module and a DS3231 clock module. The insert holds the beam walls and the camera; the
+boards sit outside the bucket, wired in. Every bench test runs on it, the controlled tests, the roof
+laser, a side view and colour included, and so does a test model's time per picture; the battery is
+sized from the parts' measured currents. The modem, after the Auris design, and the four-week run
+for the season come with the trap's own boards. Each firmware project gains a `prototype`
+environment with the board's pins in one header; the parts list, wiring list and bring-up checklist
+are in `hardware/prototype/`. Entries 129 to 144;
+[ADR](adr/hardware-proven-on-development-boards.md).
+Rejected: the trap's own boards first, with the bench tests on them; separate rigs for the risky
+parts; the quickest boards at hand, such as the old prototype's; the user's OV5647 Raspberry Pi
+camera, which the ESP32-S3 cannot take; the modem on an evaluation board.
 
 ### What the bench decides
 The roof laser (entry 35), a side view by mirror or second camera (entry 37) and colour by daylight
-through the top or by a short white light at the end of a pass (entry 38) are tested in the
-controlled tests. The insert leaves a mount above the passage for a roof laser, a slot in one wall
-for a mirror or second camera, and the bucket top free.
+through the top or by a short white light at the end of a pass (entry 38) are tested on the
+prototype before the trap's own boards are drawn (entry 131). The insert leaves a mount above the
+passage for a roof laser, a slot in one wall for a mirror or second camera, and the bucket top
+free.
 
 ### The filter on the trap
 The camera controller drops a picture only if the pass was noticed by the PIR sensor alone and the
 picture differs from the day's empty-view picture by less than a set threshold; every pass the
 lasers noticed keeps all its pictures. In pilot mode, set in the trap's configuration file, it
-marks such pictures instead and drops nothing. Entries 23, 29 and 56.
+marks such pictures instead and drops nothing. The difference is the largest over small
+overlapping patches of greyscale thumbnails, as the sorting tool measures it, so that a small
+animal in one place counts as much as a large one. Entries 23, 29, 56 and 125.
 Rejected: judging every picture by its difference from the empty view (could drop animals the
-lasers saw).
+lasers saw); the difference averaged over the whole picture (a 3 cm animal hardly changes it).
 
 ### Records on the card, exported as Camtrap DP
 One CSV file of pass records per survey day, the JPEG pictures in a folder per survey day, a fault
 log and the daily state summaries, all on the memory card; times in UTC, survey days from the
-trap's configured UTC offset. The sorting tool exports a season as a Camera Trap Data Package.
-Entry 48; [ADR](adr/records-as-csv-and-camtrap-dp.md).
-Rejected: only the trap's own format.
+trap's configured UTC offset. The trap's coordinates are entered in `trap.cfg` when it is set up.
+The sorting tool exports a season as a Camera Trap Data Package, placed at those coordinates;
+without them the export stops and says so, while the trap itself runs on. Entries 48, 81 and 83;
+[ADR](adr/records-as-csv-and-camtrap-dp.md).
+Rejected: only the trap's own format; the coordinates in a file on the computer, or typed at each
+export.
 
 ### The state summary is a FieldMesh reading
 Once a day, after the empty-view picture, the camera controller appends one FieldMesh reading to the
-state file: the contract's core fields plus `trapPasses`, `trapFreeMB` and `trapViewClear`, which
-the FieldMesh backend stores although it does not model them. No radio in version 1. Entries 51 and
-60; [ADR](adr/state-summary-as-fieldmesh-reading.md).
+state file: the contract's core fields, `latitude` and `longitude` from `trap.cfg` (null when not
+set), and `trapKind` `state`, `trapPasses`, `trapFreeMB` and `trapViewClear`, which the FieldMesh
+backend stores although it does not model them. The link sends it unchanged. Entries 60, 83 and 85;
+[ADR](adr/state-summary-as-fieldmesh-reading.md).
 Rejected: a FieldMesh node over ESP-NOW (needs a hub on every site); the aux1 and aux2 fields.
 
 ### Power
 A 6 V solar panel of about 1 W on a short stake beside the trap charges two 18650 cells in parallel
 (about 7 Ah) through the FieldHub's CN3791 charger design, with charging stopped below 0 °C by a
-thermistor on the pack. The design plans for 200 passes a day; see the power estimate below.
-Entries 42, 46, 52, 53 and 61.
+thermistor on the pack. The stake also carries the modem's antenna. The design plans for 200
+passes a day, a daily send and a model run per pass; see the power estimate below. The pack is
+sized before the trap's own board from the parts' currents measured on the prototype and Auris's
+upper estimate of 13 mAh for a daily send; a send is measured on the trap's own board. If the bench
+measures more, the pack grows rather than features shrinking. Entries 42, 46, 52, 61, 77, 94, 116,
+133 and 143.
 Rejected: a 12 Ah pack without solar; lithium AA cells; a panel on the bucket top or a fence post;
-one cell.
+one cell; three or four cells before the load is measured.
 
 ### Firmware with PlatformIO and the Arduino framework
 Both firmwares are PlatformIO projects with the Arduino framework: the watcher on megaTinyCore, the
@@ -96,17 +199,32 @@ parameters, generating STL files; the boards are drawn in EasyEDA. Entry 62;
 Rejected: KiCad and OpenSCAD.
 
 ### Sorting as a Python tool with a local review page
-A Python package with a command line reads a copy of the card, marks empty pictures against the
-day's empty view, sorts the rest into broad groups once a model exists, serves a local review page
-where people name species, and exports and evaluates. The group model is a small pretrained image
-model fine-tuned with PyTorch. Entries 22, 49 and 63; [ADR](adr/sorting-tool-in-python.md).
-Rejected: a general labelling tool; an existing camera-trap detector.
+A Python package with a command line copies a card into a season folder, marks pictures that look
+like their survey day's empty view, serves a local review page, and summarises, exports and
+evaluates. The review page shows each pass with a picture not marked empty, its pictures side by
+side; a person picks the broad group (frog, toad, newt, lizard, snake, turtle or other) and adds the
+species name once for the pass, and can mark single pictures empty or "can't tell". The animals
+found in the bucket during the field phase are matched to passes, and their identifications in the
+hand become labels of those passes (entry 126). For a pass
+recorded outside pilot mode the page suggests the trap's model type; for one recorded in pilot mode
+it hides it. No model runs on the computer; people's labels are kept so that the trap's model keeps
+learning from them. The export gives people's labels, and a pass nobody sorted the model type,
+marked as classified by machine. Entries 49, 67, 75, 78, 80, 82, 84, 98, 103, 121 and 122;
+[ADR](adr/sorting-tool-in-python.md).
+Rejected: a general labelling tool; a model on the computer; labelling each picture on its own
+(about three times the clicks); the suggestion shown in the pilot.
+
+### Outside this repository
+The trap needs FieldMesh to have a command type for trap settings, release roles for trap firmware
+(`trap`) and models (`trap-model`), and the trap keys modelled, so that passes reach its exports.
+One FieldMesh issue collects them:
+[armsto88/fieldMesh#99](https://github.com/armsto88/fieldMesh/issues/99). Entry 111.
 
 ### Three levels of tests
 Unit tests on the computer for firmware logic and the sorting tool; bench runs with a model-animal
-rig whose records are checked by pytest scripts marked `bench`; and written check procedures in
-`docs/testing/` for what only a person can check. Every test names its scenario with
-`spec: <id>`. Entry 64; [ADR](adr/three-levels-of-tests.md).
+rig, first on the prototype, whose records are checked by pytest scripts marked `bench`; and
+written check procedures in `docs/testing/` for what only a person can check. Every test names its
+scenario with `spec: <id>`. Entries 64 and 131; [ADR](adr/three-levels-of-tests.md).
 Rejected: unit tests only.
 
 ### The prototype moves aside
@@ -115,16 +233,20 @@ Rejected: unit tests only.
 Rejected: leaving them at the top.
 
 ## Power and storage estimate
-Estimates to be replaced by bench measurements (task 5.2):
+Estimates, replaced by the prototype's measurements (task 5.7) and, for a send and the season, by
+the trap's own board (task 5.8):
 
 | Part | Estimate |
 |---|---|
 | Watcher with six pulsed beams | about 0.25 mA all the time |
-| PIR sensor, ESP32-S3 asleep, clock | about 0.05 mA all the time |
+| PIR sensor, ESP32-S3 asleep, clock, modem rail off | about 0.05 mA all the time |
 | One pass: wake, up to six pictures with light, writing | about 0.12 mAh |
-| A day at 200 passes | about 30 mAh |
-| Two 18650 cells, about 7 Ah | about 200 days without sun |
+| The model on about three pictures per pass | about 0.01 mAh, 2 mAh a day |
+| One daily send in good coverage (Auris budgets at most 180 J a day) | about 2 to 13 mAh |
+| A day at 200 passes | about 35 to 45 mAh |
+| Two 18650 cells, about 7 Ah | about 150 to 200 days without sun |
 | Pictures: about 250 kB, on average three per pass | about 150 MB a day, 27 GB a season; a 128 GB card |
+| Sent: about 300 bytes per pass reading | about 60 kB a day, 2 MB a month, plus updates |
 
 ## Interfaces
 
@@ -204,6 +326,8 @@ class PassBuilder {
   /// Closes an open pass after quiet_ms without events; true when a pass completed.
   bool tick(uint32_t now_ms);
   const Pass& pass() const;
+  /// True while a pass is open.
+  bool open() const;
 };
 ```
 
@@ -212,12 +336,20 @@ Text for everything written to the card; no hardware calls.
 
 ```cpp
 // firmware/camera/lib/records/records.h
+enum class Placement : uint8_t { Line, End };   // in the fence line, or at a fence end
+
 struct TrapConfig {
   char trap_id[16];                           // also the FieldMesh nodeId, e.g. ECT_0A1B2C
   int16_t utc_offset_min;                     // for survey days and the daily times
   bool pilot_mode;
   uint8_t empty_view_hour;                    // local hour of the daily picture and summary
   float drop_threshold;                       // filter: largest difference still "empty"
+  float latitude, longitude;                  // decimal degrees from setup; NaN when not set
+  Placement placement;                        // default Line
+  char side_a[32];                            // side A in words, e.g. "pond side"; may be empty
+  uint8_t send_every_h;                       // hours between sends, 1 to 168; default 24
+  uint16_t link_timeout_s;                    // longest try per send, 30 to 600; default 180
+  uint16_t config_version;                    // raised by each settings command taken
 };
 
 struct PassRecord {                           // one row of a survey day's pass file
@@ -227,9 +359,13 @@ struct PassRecord {                           // one row of a survey day's pass 
   const char* pictures;                       // ';'-separated file names
   uint8_t dropped_empty;                      // pictures the filter dropped
   const char* judged_empty;                   // ';'-separated names marked in pilot mode
+  bool pilot;                                 // the trap was in pilot mode
+  ModelResult model;                          // type None when the trap has no model
+  const char* model_version;                  // "" when the trap has no model
 };
 
-enum class FaultKind : uint8_t { BeamBlocked, BeamClear, BatteryLow, StorageLow, CameraFailed };
+enum class FaultKind : uint8_t { BeamBlocked, BeamClear, BatteryLow, StorageLow, CameraFailed,
+                                 LinkFailed, UpdateFailed };
 
 struct StateSummary {                         // the values of one daily summary
   uint32_t utc_s, seq;
@@ -241,6 +377,9 @@ struct StateSummary {                         // the values of one daily summary
 /// Reads trap.cfg text into out, keeping defaults for missing keys; false on a malformed line.
 bool parse_config(const char* text, TrapConfig* out);
 
+/// Writes c as trap.cfg text, which parse_config reads back to the same values.
+size_t config_text(const TrapConfig& c, char* out, size_t size);
+
 /// Survey day (noon to noon, local) of a UTC time, as "YYYY-MM-DD" of its first noon.
 void survey_day(uint32_t utc_s, int16_t utc_offset_min, char out[11]);
 
@@ -250,11 +389,167 @@ const char* pass_csv_header();
 /// One pass record as a CSV line; pictures and judged-empty marks as ';'-separated names.
 size_t pass_csv_line(const PassRecord& r, char* out, size_t size);
 
+/// Reads a line of a pass file, as pass_csv_line writes it, back into out, so that a stored pass
+/// is sent as pass_reading_json; its texts point into text. False on a malformed line.
+bool parse_pass_csv_line(const char* line, PassRecord* out, char* text, size_t text_size);
+
 /// One fault as a CSV line for faults.csv.
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out, size_t size);
 
-/// The day's state summary as one FieldMesh reading, JSON on one line.
+/// The day's state summary as one FieldMesh reading, JSON on one line, with the configured
+/// latitude and longitude, or null for them when not set.
 size_t summary_json(const StateSummary& s, const TrapConfig& c, char* out, size_t size);
+
+/// One pass as a FieldMesh reading, JSON on one line, with flat trap keys and its own seqNum.
+size_t pass_reading_json(const PassRecord& r, const TrapConfig& c, uint32_t seq, char* out,
+                         size_t size);
+```
+
+#### Model types (camera library `typing`)
+Turns the model's scores for a pass's pictures into the pass's type; no hardware calls.
+
+```cpp
+// firmware/camera/lib/typing/typing.h
+enum class ModelType : uint8_t { None, Empty, FrogToad, Lizard, Snake, Other };  // None: no model
+
+struct PictureScores { float empty, frog_toad, lizard, snake, other; };  // one picture, sum 1
+
+struct ModelResult {
+  ModelType type;
+  float confidence;                           // 0 to 1; 0 for None
+};
+
+/// The surest animal type over the pictures if any animal score reaches min_animal, else Empty
+/// with the highest empty score; None when n is 0.
+ModelResult pass_type(const PictureScores* pictures, size_t n, float min_animal);
+
+const char* model_type_name(ModelType t);     // "", "empty", "frog_or_toad", "lizard", ...
+```
+
+#### Sending (camera library `uplink`)
+Upload bodies, the confirmed position, the order of a send and FieldMesh's replies; no hardware
+calls. Uses ArduinoJson. The send job on the board lists the card's files for a `SendPlan`, reads
+each reading it names, posts `UploadBody`s and confirms or restarts the plan by `judge_reply`.
+
+```cpp
+// firmware/camera/lib/uplink/uplink.h
+struct SentPosition {                         // kept in state/sent.cfg on the card
+  char pass_day[11];                          // survey day of the last confirmed pass; "" for none
+  uint32_t pass_line;                         // last confirmed record in that day's pass file
+  uint32_t summary_line;                      // confirmed lines of state/summaries.jsonl
+  uint32_t next_seq;                          // seqNum for the next pass reading, from 1
+};
+
+/// Reads state/sent.cfg; false on malformed text, leaving out unchanged.
+bool parse_sent_position(const char* text, SentPosition* out);
+size_t sent_position_text(const SentPosition& p, char* out, size_t size);
+
+struct ReadingPlace {                         // where one reading of a send lies on the card
+  bool summary;                               // a line of state/summaries.jsonl, else a pass
+  char day[11];                               // survey day of the pass file
+  uint32_t line;                              // record in its file, from 1
+  uint32_t seq;                               // seqNum of a pass reading
+};
+
+/// The readings of one send in order: unconfirmed passes by survey day and line, then the
+/// unconfirmed summaries, so that a summary is the newest reading FieldMesh gets. A resent pass
+/// keeps its seqNum.
+class SendPlan {
+ public:
+  explicit SendPlan(const SentPosition& confirmed);
+  /// Adds a survey day's pass file with its number of records, in any order of days; false when
+  /// the plan is full and a later day waits for the next send.
+  bool add_pass_file(const char* day, uint32_t records);
+  void set_summaries(uint32_t lines);         // lines in state/summaries.jsonl
+  /// The next reading to send; false when none is left.
+  bool next(ReadingPlace* out);
+  /// Moves the confirmed position past every reading up to and including last.
+  void confirm(const ReadingPlace& last);
+  /// Goes back to the reading after the confirmed position, to resend what was not confirmed.
+  void restart();
+  const SentPosition& confirmed() const;
+};
+
+class UploadBody {
+ public:
+  explicit UploadBody(size_t max_readings = 100);
+  /// Adds one reading line; false when the body is full.
+  bool add(const char* reading_json);
+  /// The JSON body with readings, meta and status; status only on a session's first body.
+  size_t write(const char* firmware_version, const char* status_json, char* out, size_t size);
+  size_t count() const;
+};
+
+enum class ReplyAction : uint8_t { Confirm, ResendSmaller, Stop, RetryLater };
+
+/// As the FieldHub: Confirm only on 200 with received == sent; 401 or 403 stop; 408, 429, 5xx
+/// and no answer retry at the next send; 400, 413 and other 4xx resend smaller.
+ReplyAction judge_reply(int http_status, uint32_t received, uint32_t sent);
+
+struct Command {
+  uint32_t cursor;                            // FieldMesh's sequence
+  char id[32];                                // FieldMesh's commandId, named when confirming
+  char type[24];
+  const char* payload;                        // the payload as JSON text, in Reply's buffer
+};
+
+struct Reply {
+  uint32_t received;
+  uint32_t server_time_unix;                  // 0 when absent
+  uint32_t next_cursor;                       // 0 when absent
+  Command commands[8];
+  uint8_t n_commands;
+  char payload_text[2048];                    // the commands' payloads
+};
+
+/// Reads FieldMesh's reply body; false when it is not valid JSON.
+bool parse_reply(const char* json, Reply* out);
+
+enum class CommandResult : uint8_t { Accepted, Rejected };  // reported as ACCEPTED or INVALID
+
+/// Applies a trap settings command, a JSON object of trap.cfg keys, to a copy of c by the rules
+/// of parse_config, raising config_version; refuses the whole command for any unknown or invalid
+/// setting, and for trap_id and config_version, which the link does not set.
+CommandResult apply_settings(const char* payload, const TrapConfig& c, TrapConfig* out,
+                             char* reason, size_t reason_size);
+
+struct CommandReport { char id[32]; CommandResult result; };  // reported at the next send
+
+/// The status's control part as the FieldHub reports it: the last command cursor, the settings
+/// version as state revision, and each command's ID with ACCEPTED or INVALID.
+size_t control_status_json(uint32_t last_cursor, uint16_t config_version,
+                           const CommandReport* reports, size_t n, char* out, size_t size);
+
+/// UTC time of the next send after the last one, every send_every_h hours.
+uint32_t next_send(uint32_t last_send_utc_s, const TrapConfig& c);
+```
+
+#### Signed updates (camera library `updates`)
+Checks manifests and files of firmware and model updates; no hardware calls. Follows the FieldHub's
+`firmware_manifest.h` and uses rweather/Crypto for Ed25519 and SHA-256.
+
+```cpp
+// firmware/camera/lib/updates/updates.h
+struct Manifest {
+  char role[16];                              // "trap" for firmware, "trap-model" for models
+  char version[16];
+  uint32_t size;
+  uint8_t sha256[32];
+};
+
+/// Checks the Ed25519 signature over the exact bytes of manifest.json against the release key,
+/// then reads its first artifact with the role "trap" or "trap-model"; false on a bad signature,
+/// a malformed manifest or a release with nothing for the trap.
+bool verify_manifest(const uint8_t* json, size_t n, const uint8_t signature[64],
+                     const uint8_t release_key[32], Manifest* out);
+
+/// Feeds a downloaded file in pieces and compares its size and SHA-256 with the manifest.
+class FileCheck {
+ public:
+  explicit FileCheck(const Manifest& m);
+  void update(const uint8_t* data, size_t n);
+  bool matches();
+};
 ```
 
 #### Filter (camera library `filter`)
@@ -262,8 +557,9 @@ Decides whether a picture may be dropped; no hardware calls.
 
 ```cpp
 // firmware/camera/lib/filter/filter.h
-/// Mean absolute difference of two greyscale thumbnails of n pixels, from 0 to 1.
-float thumbnail_difference(const uint8_t* a, const uint8_t* b, size_t n);
+/// The largest mean absolute difference of two greyscale thumbnails, width by height pixels row
+/// by row, over patches of 8 by 8 pixels stepping 4, from 0 to 1.
+float thumbnail_difference(const uint8_t* a, const uint8_t* b, size_t width, size_t height);
 
 enum class FilterResult : uint8_t { Keep, Drop, MarkEmpty };
 
@@ -277,20 +573,21 @@ A Python package with the command `trapsort`.
 
 ```python
 # sorting/trapsort/model.py
+Group = Literal["frog", "toad", "newt", "lizard", "snake", "turtle", "other"]
+ModelType = Literal["empty", "frog_or_toad", "lizard", "snake", "other"]
+def model_type_of(group: Group) -> ModelType:
+    """The model type a person's group counts as: frog and toad as frog_or_toad; newt, turtle
+    and other as other."""
 @dataclass
 class Picture:
-    """One stored picture: file, pass_id, survey day, empty mark, group and confidence."""
+    """One stored picture: file, pass_id, survey day and empty mark."""
 @dataclass
 class PassRecord:
-    """One row of a pass file, with its pictures."""
+    """One row of a pass file, with its pictures, whether it was recorded in pilot mode, and
+    the model type, confidence and model version, None when the trap had no model."""
 @dataclass
 class Season:
     """Everything read from one card copy: passes, pictures, empty views, faults, summaries."""
-@dataclass
-class LabelledPicture:
-    """A picture with a group from a person's name or a bucket label."""
-class GroupModel:
-    """A trained group model: predict(picture) gives a group and a confidence."""
 @dataclass
 class DayCount:
     """Passes in one survey day for one name or group and one direction."""
@@ -298,37 +595,54 @@ class DayCount:
 # sorting/trapsort/card.py
 def read_card(card: Path) -> Season:
     """Reads pass records, pictures, faults and summaries from a card copy; raises CardError."""
+def import_card(card: Path, season_dir: Path) -> Season:
+    """Checks a card with read_card and copies it into season_dir/card; raises CardError, also
+    when the season already holds a card."""
+def read_season(season_dir: Path) -> Season:
+    """Reads season_dir/card and, where present, the empty marks in sorting.csv."""
+def write_sorting(season: Season, season_dir: Path) -> None:
+    """Writes each picture's empty mark and difference to season_dir/sorting.csv."""
 
 # sorting/trapsort/empty.py
 def mark_empty(season: Season, threshold: float) -> None:
     """Marks pictures that differ from their survey day's empty view by less than threshold."""
 
-# sorting/trapsort/groups.py
-Group = Literal["frog", "toad", "newt", "lizard", "snake", "other"]
-def sort_groups(season: Season, model: GroupModel | None) -> None:
-    """Gives each picture not marked empty a group and confidence; none without a model."""
-def train_group_model(pictures: Iterable[LabelledPicture], out: Path,
-                      min_per_group: int = 50) -> GroupModel:
-    """Fine-tunes a small pretrained model; raises TooFewLabels below min_per_group."""
-
 # sorting/trapsort/labels.py
 class LabelStore:
-    """Names, group corrections and bucket labels in labels.csv beside the season."""
+    """Names, groups, empty and can't-tell marks and bucket labels in a season's labels.csv;
+    the latest label of each kind counts."""
+    def __init__(self, path: Path) -> None: ...
     def set_name(self, picture: str, name: str, by: str) -> None: ...
     def set_group(self, picture: str, group: Group, by: str) -> None: ...
-    def add_bucket_label(self, pass_id: str, name: str, checked_at: datetime) -> None: ...
+    def set_empty(self, picture: str, empty: bool, by: str) -> None: ...
+    def set_unclear(self, picture: str, by: str) -> None: ...
+    def add_bucket_label(self, pass_id: str, name: str, group: Group,
+                         checked_at: datetime) -> None: ...
+    def name(self, picture: str) -> str | None: ...
+    def group(self, picture: str) -> Group | None: ...
+    def empty(self, picture: str) -> bool | None: ...
+    def unclear(self, picture: str) -> bool: ...
+    def bucket_labels(self, pass_id: str) -> list[tuple[str, Group, datetime]]: ...
 
 # sorting/trapsort/review.py
 def serve_review(season: Season, labels: LabelStore, port: int = 8765) -> None:
-    """Serves the local review page until stopped; each name or correction is saved at once."""
+    """Serves the local review page until stopped: each pass with a picture not marked empty,
+    its pictures side by side; a group and name are saved for every picture of the pass at
+    once, or picture by picture, and each mark is saved at once. A pass recorded outside pilot
+    mode shows its model type as a suggestion; one recorded in pilot mode does not."""
 
 # sorting/trapsort/summary.py
 def passes_per_survey_day(season: Season, labels: LabelStore) -> list[DayCount]:
     """Passes per survey day by group or species and direction; never called animals."""
 
 # sorting/trapsort/camtrapdp.py
-def export_camtrap_dp(season: Season, labels: LabelStore, out: Path) -> None:
-    """Writes datapackage.json, deployments.csv, media.csv and observations.csv."""
+def export_camtrap_dp(season: Season, labels: LabelStore, *, project: str,
+                      contact: str) -> None:
+    """Writes datapackage.json, deployments.csv, media.csv and observations.csv into the season
+    folder, next to card/, with the project title and contact, the placement and side A in the
+    deployment; people's labels as classified by a person, the model type of an unsorted pass
+    as classified by machine; raises ExportError when the card's trap.cfg holds no
+    coordinates."""
 
 # sorting/trapsort/evaluate.py
 @dataclass
@@ -338,16 +652,58 @@ class BenchPlan:
 class BucketChecks:
     """Rows of bucket_checks.csv: the animals found in the bucket at each check."""
 @dataclass
+class BucketMatch:
+    """One animal found in the bucket, with the pass it matches, or None when none does."""
+@dataclass
 class Report:
-    """Shares noticed, photographed and identified; missed animals; passes by sensing."""
+    """Shares noticed, with a usable picture and identified; missed animals; passes by sensing;
+    model agreement in total and per model type, from passes sorted in pilot mode only.
+    A pass has a usable picture when a person gave any of its pictures a group or a name, and is
+    identified when that name matches the animal the reference names."""
 def read_plan(path: Path) -> BenchPlan:
     """Reads plan.csv; raises PlanError on a malformed row."""
 def read_bucket_checks(path: Path) -> BucketChecks:
     """Reads bucket_checks.csv; raises PlanError on a malformed row."""
+def match_bucket_checks(season: Season, labels: LabelStore,
+                        checks: BucketChecks) -> list[BucketMatch]:
+    """Matches each animal of the season's trap to the earliest unmatched pass since the
+    previous check whose pictures people gave its group; passes that went through come before
+    turned-back ones. trapsort bucket stores the matches as bucket labels; evaluate counts the
+    animals without a match as missed."""
 def evaluate(season: Season, labels: LabelStore,
              reference: BenchPlan | BucketChecks) -> Report:
     """The three outcomes as shares of the animals the reference says passed, the missed
     animals, and the passes noticed by the lasers only, the PIR sensor only and both."""
+```
+
+#### The model project (`model/trapmodel`)
+A Python package with TensorFlow and Keras, separate from `trapsort` so the sorting tool stays
+light; it reads named bench pictures through `trapsort`.
+
+```python
+# model/trapmodel/data.py
+def fetch_sources(out: Path) -> None:
+    """Downloads the LILA and SAWIT pictures and labels used for training into out."""
+def build_dataset(sources: Path, size: tuple[int, int]) -> Dataset:
+    """Grey pictures at size with model types, mapped from each source's labels."""
+def bench_dataset(seasons: list[Path], size: tuple[int, int]) -> Dataset:
+    """Named bench pictures from trapsort seasons, with model_type_of their people's groups."""
+
+# model/trapmodel/train.py
+def train(data: Dataset, fine_tune: Dataset | None, out: Path) -> Path:
+    """Trains, or fine-tunes on bench pictures, and writes a Keras model."""
+
+# model/trapmodel/export.py
+def export_int8(keras_model: Path, sample: Dataset, out: Path) -> Path:
+    """Writes model.tflite, 8-bit for TensorFlow Lite Micro, and the model card."""
+
+# model/trapmodel/check.py
+def check(model_file: Path, held_out: Dataset) -> Agreement:
+    """Agreement with people's types, in total and per model type."""
+
+# model/trapmodel/sign.py
+def sign_release(file: Path, version: str, key: Path, out: Path) -> None:
+    """Writes manifest.json (role trap-model) and its Ed25519 signature with the release key."""
 ```
 
 #### Bench checks (`bench/checks`)
@@ -372,37 +728,86 @@ def match_plan(run: BenchRun, window_s: float = 2.0) -> list[PlannedPass]:
 ### On the memory card
 ```
 trap.cfg                       key=value lines: trap_id, utc_offset_min, pilot_mode,
-                               empty_view_hour, drop_threshold
+                               empty_view_hour, drop_threshold, latitude, longitude,
+                               placement (line or end), side_a, send_every_h,
+                               link_timeout_s, config_version
+link.cfg                       first start only: apn, fieldmesh_url, fieldmesh_key; the
+                               trap moves them into its own flash and empties the file
 passes/2026-05-14.csv          one file per survey day (noon to noon, local)
 pictures/2026-05-14/           <pass_id>_<n>.jpg, and empty_<HHMM>.jpg for the daily picture
 faults.csv                     time_utc,fault,detail
 state/summaries.jsonl          one FieldMesh reading per line, one line per day
+state/sent.cfg                 the last confirmed pass and summary, and the next seqNum
+model/model.tflite             the model in use, with manifest.json and manifest.sig
+updates/                       downloads being checked; emptied after each update
 ```
 
-Pass file columns, times in ISO 8601 UTC:
-`pass_id,start_utc,end_utc,direction,heights_a,heights_b,noticed_by,pictures,dropped_empty,judged_empty`,
-with `direction` one of `AtoB`, `BtoA`, `backA`, `backB`, `unknown`, `noticed_by` one of `lasers`,
-`pir`, `both`, and `pass_id` as `<trap_id>-<survey day>-<number>`.
+Pass file columns, times in ISO 8601 UTC: `pass_id,start_utc,end_utc,direction,heights_a,`
+`heights_b,noticed_by,pictures,dropped_empty,judged_empty,pilot,model_type,model_confidence,`
+`model_version`, with `direction` one of `AtoB`, `BtoA`, `backA`, `backB`, `unknown`, `noticed_by`
+one of `lasers`, `pir`, `both`, `pilot` `true` or `false`, `model_type` one of `empty`,
+`frog_or_toad`, `lizard`, `snake`, `other` or empty without a model, and `pass_id` as
+`<trap_id>-<survey day>-<number>`.
 
 Fault kinds: `beam_blocked`, `beam_clear`, `battery_low`, `storage_low`, `camera_failed`.
 
 A state summary line:
 ```json
 {"datetime":"2026-05-14T10:00:00Z","nodeId":"ECT_0A1B2C","seqNum":12,"sensorPresent":0,
- "qualityFlags":0,"configVersion":1,"batVoltage":3.98,"airTemp":17.5,
- "trapPasses":143,"trapFreeMB":98112,"trapViewClear":true}
+ "qualityFlags":0,"configVersion":1,"batVoltage":3.98,"airTemp":17.5,"latitude":49.4521,
+ "longitude":7.7541,"trapPasses":143,"trapFreeMB":98112,"trapViewClear":true}
 ```
 `airTemp` comes from the clock chip in the hood; `qualityFlags` bit 0 is set when the view is not
-clear.
+clear. The summary also carries `"trapKind":"state"`.
 
-### Beside a season on the computer
-- `labels.csv`: `picture,pass_id,kind,value,by,at`, where `kind` is `name`, `group` or `bucket`.
+A pass as a reading, as the link sends it; `trapHeightsA` and `trapHeightsB` are the beam bits as
+numbers, since FieldMesh refuses lists:
+```json
+{"datetime":"2026-05-14T21:13:05Z","nodeId":"ECT_0A1B2C","seqNum":1043,"sensorPresent":0,
+ "qualityFlags":0,"configVersion":3,"batVoltage":null,"trapKind":"pass",
+ "trapPassId":"ECT_0A1B2C-2026-05-14-17","trapDirection":"AtoB","trapHeightsA":1,
+ "trapHeightsB":1,"trapNoticedBy":"lasers","trapPilot":false,"trapModelType":"lizard",
+ "trapModelConf":0.87,"trapModelVersion":"m1.0.0","trapPictures":3}
+```
+
+An upload follows the FieldMesh upload contract: `readings`, `meta` with `firmwareVersion`, and on
+a session's first body `status` with the hub keys that apply to a trap (`batVoltage`, `rtcUnix`,
+`deviceId`, one entry in `nodes`, `upload`, `sdCard`, `control` with the command results, and
+`firmware` with the model version). Fault kinds add `link_failed` and `update_failed`.
+
+### A season on the computer
+A season is a folder; every `trapsort` command except `import` takes it.
+```
+card/                          the card copy, as `trapsort import` copied it; never changed
+sorting.csv                    the computer's empty marks, written again by each `trapsort sort`
+labels.csv                     people's labels and bucket labels; only ever appended to
+datapackage.json               the Camtrap DP export, with deployments.csv, media.csv and
+                               observations.csv, written again by each `trapsort export`
+```
+
+- `sorting.csv`: `picture,pass_id,survey_day,empty,difference`, one row per picture, with
+  `difference` the largest mean difference from the day's closest empty view over any small patch
+  of the picture, so that a small animal counts as much as a large one.
+- `labels.csv`: `picture,pass_id,kind,value,by,at`, where `kind` is `name`, `group`, `empty` (value
+  `true` or `false`), `unclear` (a picture marked "can't tell"), `bucket` (a name) or
+  `bucket_group`. Bucket rows name the pass and leave `picture` empty.
 - `bucket_checks.csv`: `checked_at,trap_id,animal,name,group`, one row per animal found in the
-  bucket during the field phase.
-- The Camtrap DP export: one deployment per trap season; one media row per picture; one
-  event-level observation per pass, with `observationType` `animal`, `blank` or `unclassified`,
-  the name from the labels, `classificationMethod` `human` or `machine`, and the direction in
-  `observationComments`.
+  bucket during the field phase, and a row with `animal`, `name` and `group` empty for a check
+  that found nothing; `checked_at` in ISO 8601 with its time zone. An animal matches the earliest
+  unmatched pass since the previous check whose pictures show its group; passes that went through
+  come before turned-back ones.
+- The Camtrap DP export (version 1.0.1), in the season folder so that each picture is named as
+  `card/pictures/<day>/<file>` (entry 128), with the project title and contact typed at the
+  export (entry 127): one deployment per trap season, placed at the coordinates in the card's
+  `trap.cfg`; one media row per picture of a pass; one event-level observation per pass and
+  animal people gave it, with `observationType` `animal`, `blank`, `unknown` (every picture "can't
+  tell") or `unclassified`, the species name in `scientificName`, the group in the tag
+  `group:<group>`, `classificationMethod` `human`, and the direction in `observationComments`. A
+  pass nobody sorted takes the model type in the tag `modelType:<type>`, with
+  `classificationMethod` `machine`, `classifiedBy` the model version and
+  `classificationProbability`. The deployment's `deploymentTags` carry `placement:line` or
+  `placement:end` and `sideA:<words>`. A picture's time is the pass's start plus half a second per
+  picture before it, rounded down to the second, noted as estimated in `mediaComments`.
 
 ### A bench run
 `plan.csv`: `planned_at,model,body_length_mm,height_mm,speed_mm_s,temperature_c,light,direction`,
@@ -415,13 +820,21 @@ next to a copy of the trap's card from that run.
 - `firmware/shared/include/link.h`
 - `firmware/watcher/`: PlatformIO project for the ATtiny3216, with `lib/beams` and `test/`
 - `firmware/camera/`: PlatformIO project for the ESP32-S3, with `lib/passes`, `lib/records`,
-  `lib/filter` and `test/`
+  `lib/filter`, `lib/typing`, `lib/uplink`, `lib/updates` and `test/`
+- `model/`: the `trapmodel` package, its `pyproject.toml`, `tests/` and the model card
 - `sorting/`: the `trapsort` package, its `pyproject.toml` and `tests/`
 - `bench/rig/`: the model-animal rig (a belt pulling model animals along the floor at set speeds)
 - `bench/checks/`: pytest checks on bench runs
 - `hardware/insert/`: the FreeCAD script and generated STL files
-- `hardware/boards/`: EasyEDA exports of the watcher and beam boards and the main board
+- `hardware/prototype/`: the prototype's parts list, wiring list and bring-up checklist
+- `firmware/watcher/` and `firmware/camera/`: a `prototype` environment each in `platformio.ini`,
+  with the development boards' pins in `include/board_prototype.h`
+- `hardware/boards/`: EasyEDA exports of the watcher and beam boards and the main board, with the
+  modem
 - `docs/testing/`: written check procedures, the controlled-test plan and the field-phase procedure
+
+### Modified
+- `.gitignore`: PlatformIO and Python build output
 
 ### Renamed
 - `code.ino` → `prototype/code.ino`

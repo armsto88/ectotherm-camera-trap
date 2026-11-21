@@ -14,7 +14,8 @@ of the behaviour is logic that runs on a computer.
 
 ## Decision
 Firmware logic and the sorting tool have unit tests that run on a computer. Bench runs pass model
-animals through a trap on a rig, following a plan, and pytest checks marked `bench` compare the
+animals through a trap on a rig, following a plan, first through the prototype on development
+boards and later through traps on their own boards, and pytest checks marked `bench` compare the
 card's records with the plan. What only a person can check is a written procedure in
 `docs/testing/`. Every test, bench check and procedure step names its scenario with `spec: <id>`.
 

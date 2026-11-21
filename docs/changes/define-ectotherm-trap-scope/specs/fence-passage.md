@@ -1,24 +1,32 @@
 # fence-passage
 
 ## Purpose
-The trap is a short passage set into the line of a drift fence, through which animals cross the
-fence without being caught or handled, so that it can take the place of the bucket at drift fences
+The trap is a short passage set into a drift fence, in its line or at its end, through which animals
+pass without being caught or handled, so that it can take the place of the bucket at drift fences
 wherever they are used.
 
 ## Terms
 - **Passage:** the trap's walled, roofed channel through the fence line, open at both ends.
 - **Side A, side B:** the two sides of the fence line; each trap marks which of its ends faces side
-  A.
+  A, and its settings describe side A in words, such as "pond side".
+- **Placement:** in the fence line, with fence on both sides of the trap, or at a fence end, with
+  a short piece of fence, about a bucket's width, beyond the trap; the trap's settings note which.
 - **Pass:** an animal entering the passage at one end and leaving it at either end.
 
 ## ADDED Requirements
 
 ### Requirement: Crossing the fence line through the passage
-The trap shall be set into the line of a drift fence so that the fence on both sides leads animals
-to it, and an animal following the fence can cross to the other side through the passage.
+The trap shall be set into a drift fence, in its line or at its end, so that the fence leads
+animals to it, and an animal following the fence can cross to the other side through the passage.
+The same trap shall serve both placements.
 
 #### Scenario: An animal following the fence crosses through the passage <!-- id: fd2c5b0e -->
 - **Given** a trap set into a drift fence
+- **When** an animal following the fence on side A reaches the trap
+- **Then** it can walk through the passage and leave it on side B
+
+#### Scenario: A trap at a fence end <!-- id: d3137709 -->
+- **Given** a trap set at the end of a drift fence, with a short piece of fence beyond it
 - **When** an animal following the fence on side A reaches the trap
 - **Then** it can walk through the passage and leave it on side B
 
