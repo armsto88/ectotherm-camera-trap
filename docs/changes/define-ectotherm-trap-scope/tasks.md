@@ -41,7 +41,7 @@ test carrying `# spec: <id>`.
   - `5c654b74` An obviously empty picture is dropped
   - `3007f937` An unsure picture is kept
   - `f4c14891` The filter marks a picture in pilot mode
-- [ ] 2.5 Add the trap's coordinates to `records`: `latitude` and `longitude` in `TrapConfig` (not
+- [x] 2.5 Add the trap's coordinates to `records`: `latitude` and `longitude` in `TrapConfig` (not
   set by default), read by `parse_config` and rejected out of range, and written by `summary_json`
   in FieldMesh's fields for them, null when not set (changes what 2.3 built).
   Tests:

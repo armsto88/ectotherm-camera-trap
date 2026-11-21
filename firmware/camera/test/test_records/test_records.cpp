@@ -122,19 +122,30 @@ static void test_config_keeps_defaults_for_missing_keys() {
   TEST_ASSERT_EQUAL(defaults.pilot_mode, c.pilot_mode);
   TEST_ASSERT_EQUAL(defaults.empty_view_hour, c.empty_view_hour);
   TEST_ASSERT_EQUAL_FLOAT(defaults.drop_threshold, c.drop_threshold);
+  TEST_ASSERT_TRUE(isnan(c.latitude));
+  TEST_ASSERT_TRUE(isnan(c.longitude));
 }
 
 static void test_config_reads_every_key() {
   TrapConfig c;
   TEST_ASSERT_TRUE(parse_config(
       "trap_id = ECT_0A1B2C\r\nutc_offset_min=-300\r\npilot_mode=0\r\n"
-      "empty_view_hour=10\r\ndrop_threshold=0.05",
+      "empty_view_hour=10\r\ndrop_threshold=0.05\r\nlatitude=49.4521\r\nlongitude=-7.7541",
       &c));
   TEST_ASSERT_EQUAL_STRING("ECT_0A1B2C", c.trap_id);
   TEST_ASSERT_EQUAL(-300, c.utc_offset_min);
   TEST_ASSERT_FALSE(c.pilot_mode);
   TEST_ASSERT_EQUAL(10, c.empty_view_hour);
   TEST_ASSERT_EQUAL_FLOAT(0.05f, c.drop_threshold);
+  TEST_ASSERT_EQUAL_FLOAT(49.4521f, c.latitude);
+  TEST_ASSERT_EQUAL_FLOAT(-7.7541f, c.longitude);
+}
+
+static void test_config_takes_coordinates_at_their_limits() {
+  TrapConfig c;
+  TEST_ASSERT_TRUE(parse_config("latitude=-90\nlongitude=180\n", &c));
+  TEST_ASSERT_EQUAL_FLOAT(-90.0f, c.latitude);
+  TEST_ASSERT_EQUAL_FLOAT(180.0f, c.longitude);
 }
 
 static void test_malformed_config_changes_nothing() {
@@ -146,12 +157,19 @@ static void test_malformed_config_changes_nothing() {
       "trap_id=ECT_0123456789ABC\n",        // longer than 15 characters
       "pilot_mode=yes\n",
       "drop_threshold=0.05x\n",
+      "latitude=91\n",                      // beyond a pole
+      "longitude=-180.5\n",
+      "latitude=nan\n",
+      "longitude=inf\n",
+      "latitude=\n",
+      "latitude=49.45 N\n",
   };
   for (const char* text : bad) {
     TrapConfig c;
     TEST_ASSERT_FALSE_MESSAGE(parse_config(text, &c), text);
     TEST_ASSERT_EQUAL_STRING("ECT_UNSET", c.trap_id);
     TEST_ASSERT_TRUE(c.pilot_mode);
+    TEST_ASSERT_TRUE(isnan(c.latitude));
   }
 }
 
@@ -170,8 +188,9 @@ static void test_fault_line() {
 // The rules of the readings table of the FieldMesh upload contract, version 1 of 2026-11-16:
 // datetime is ISO 8601 UTC with Z; nodeId has letters, digits, '_' and '-' only, up to 15
 // characters; seqNum, sensorPresent, qualityFlags and configVersion are integers; measurements
-// are finite numbers or null; the core keys come in the table's order; keys the backend does not
-// model are stored, so they only need to be scalar values.
+// are finite numbers or null; latitude and longitude are decimal degrees or null; the core keys
+// come in the table's order; keys the backend does not model are stored, so they only need to be
+// scalar values.
 
 struct JsonValue {
   enum Kind { String, Number, Bool, Null } kind;
@@ -260,6 +279,12 @@ static std::string contract_problem(const char* line) {
     if ((key == "batVoltage" || key == "airTemp") && v.kind != JsonValue::Number &&
         v.kind != JsonValue::Null)
       return key + " must be a finite number or null";
+    if (key == "latitude" || key == "longitude") {
+      if (v.kind == JsonValue::Null) continue;
+      const double limit = key == "latitude" ? 90 : 180;
+      if (v.kind != JsonValue::Number || fabs(strtod(v.text.c_str(), nullptr)) > limit)
+        return key + " must be decimal degrees or null";
+    }
   }
   return "";
 }
@@ -272,15 +297,29 @@ static TrapConfig trap() {
 
 // spec: 94733795
 static void test_fieldmesh_accepts_the_summary() {
-  char line[256];
+  char line[512];
   StateSummary s{1778752800, 12, 3.98f, 17.5f, 143, 98112, true};  // 2026-05-14T10:00:00Z
-  TEST_ASSERT_TRUE(summary_json(s, trap(), line, sizeof line) > 0);
+  TrapConfig c = trap();
+  TEST_ASSERT_TRUE(parse_config("latitude=49.4521\nlongitude=7.7541\n", &c));
+  TEST_ASSERT_TRUE(summary_json(s, c, line, sizeof line) > 0);
   TEST_ASSERT_EQUAL_STRING("", contract_problem(line).c_str());
   TEST_ASSERT_EQUAL_STRING(
       "{\"datetime\":\"2026-05-14T10:00:00Z\",\"nodeId\":\"ECT_0A1B2C\",\"seqNum\":12,"
       "\"sensorPresent\":0,\"qualityFlags\":0,\"configVersion\":1,\"batVoltage\":3.98,"
-      "\"airTemp\":17.50,\"trapPasses\":143,\"trapFreeMB\":98112,\"trapViewClear\":true}\n",
+      "\"airTemp\":17.50,\"latitude\":49.45210,\"longitude\":7.75410,\"trapPasses\":143,"
+      "\"trapFreeMB\":98112,\"trapViewClear\":true}\n",
       line);
+
+  // A trap set up without coordinates gives null for them, which the contract allows.
+  TEST_ASSERT_TRUE(summary_json(s, trap(), line, sizeof line) > 0);
+  TEST_ASSERT_EQUAL_STRING("", contract_problem(line).c_str());
+  TEST_ASSERT_NOT_NULL(strstr(line, "\"latitude\":null,\"longitude\":null,"));
+
+  // A trap far south and west, at the limits of both.
+  TEST_ASSERT_TRUE(parse_config("latitude=-90\nlongitude=-180\n", &c));
+  TEST_ASSERT_TRUE(summary_json(s, c, line, sizeof line) > 0);
+  TEST_ASSERT_EQUAL_STRING("", contract_problem(line).c_str());
+  TEST_ASSERT_NOT_NULL(strstr(line, "\"latitude\":-90.00000,\"longitude\":-180.00000,"));
 
   // Values the trap could not measure become null, which the contract allows.
   s.battery_v = NAN;
@@ -301,11 +340,15 @@ static void test_contract_check_catches_bad_readings() {
   TEST_ASSERT_TRUE(contract_problem(
       "{\"datetime\":\"2026-05-14T10:00:00Z\",\"nodeId\":\"X\",\"seqNum\":1,\"sensorPresent\":0,"
       "\"qualityFlags\":0,\"configVersion\":1,\"batVoltage\":nan,\"airTemp\":null}") != "");
+  TEST_ASSERT_TRUE(contract_problem(
+      "{\"datetime\":\"2026-05-14T10:00:00Z\",\"nodeId\":\"X\",\"seqNum\":1,\"sensorPresent\":0,"
+      "\"qualityFlags\":0,\"configVersion\":1,\"batVoltage\":null,\"airTemp\":null,"
+      "\"latitude\":91.0,\"longitude\":null}") != "");
 }
 
 // spec: 45e3bf6c
 static void test_a_day_without_passes() {
-  char line[256];
+  char line[512];
   const StateSummary s{1778752800, 13, 3.95f, 12.0f, 0, 98000, true};
   TEST_ASSERT_TRUE(summary_json(s, trap(), line, sizeof line) > 0);
   TEST_ASSERT_NOT_NULL(strstr(line, "\"trapPasses\":0,"));
@@ -320,6 +363,7 @@ int main() {
   RUN_TEST(test_survey_day_runs_noon_to_noon);
   RUN_TEST(test_config_keeps_defaults_for_missing_keys);
   RUN_TEST(test_config_reads_every_key);
+  RUN_TEST(test_config_takes_coordinates_at_their_limits);
   RUN_TEST(test_malformed_config_changes_nothing);
   RUN_TEST(test_fault_line);
   RUN_TEST(test_fieldmesh_accepts_the_summary);

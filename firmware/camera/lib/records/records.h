@@ -2,6 +2,7 @@
 // No hardware calls, so it is tested on the computer.
 #pragma once
 
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -15,6 +16,8 @@ struct TrapConfig {
   bool pilot_mode = true;          // only mark pictures judged empty; delete nothing
   uint8_t empty_view_hour = 12;    // local hour of the daily picture and summary
   float drop_threshold = 0.03f;    // filter: largest difference still "empty"
+  float latitude = NAN;            // decimal degrees from setup, -90 to 90; NaN when not set
+  float longitude = NAN;           // decimal degrees from setup, -180 to 180; NaN when not set
 };
 
 struct PassRecord {      // one row of a survey day's pass file
@@ -54,6 +57,7 @@ size_t pass_csv_line(const PassRecord& r, char* out, size_t size);
 /// does not fit in size.
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out, size_t size);
 
-/// The day's state summary as one FieldMesh reading, JSON on one line ending in a newline.
-/// Returns its length, or 0 if it does not fit in size.
+/// The day's state summary as one FieldMesh reading, JSON on one line ending in a newline, with
+/// the configured latitude and longitude, or null for them when not set. Returns its length, or 0
+/// if it does not fit in size.
 size_t summary_json(const StateSummary& s, const TrapConfig& c, char* out, size_t size);

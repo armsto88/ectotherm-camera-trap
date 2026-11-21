@@ -83,10 +83,11 @@ size_t fitted(int n, char* out, size_t size) {
   return static_cast<size_t>(n);
 }
 
-// A measurement as a JSON number with two decimals, or null when not measured.
-void json_number(float v, char out[16]) {
+// A value as a JSON number with the given decimals, or null when it is not finite (not measured
+// or not set).
+void json_number(float v, int decimals, char out[16]) {
   if (isfinite(v)) {
-    snprintf(out, 16, "%.2f", static_cast<double>(v));
+    snprintf(out, 16, "%.*f", decimals, static_cast<double>(v));
   } else {
     strcpy(out, "null");
   }
@@ -107,6 +108,15 @@ bool parse_long(const char* s, long lo, long hi, long* out) {
   char* end;
   const long v = strtol(s, &end, 10);
   if (end == s || *end != '\0' || v < lo || v > hi) return false;
+  *out = v;
+  return true;
+}
+
+// A finite decimal number from lo to hi.
+bool parse_float(const char* s, float lo, float hi, float* out) {
+  char* end;
+  const float v = strtof(s, &end);
+  if (end == s || *end != '\0' || !isfinite(v) || v < lo || v > hi) return false;
   *out = v;
   return true;
 }
@@ -133,10 +143,11 @@ bool apply_setting(const char* key, const char* value, TrapConfig* cfg) {
     if (!parse_long(value, 0, 23, &n)) return false;
     cfg->empty_view_hour = static_cast<uint8_t>(n);
   } else if (strcmp(key, "drop_threshold") == 0) {
-    char* end;
-    const float v = strtof(value, &end);
-    if (end == value || *end != '\0' || !(v >= 0.0f && v <= 1.0f)) return false;
-    cfg->drop_threshold = v;
+    if (!parse_float(value, 0.0f, 1.0f, &cfg->drop_threshold)) return false;
+  } else if (strcmp(key, "latitude") == 0) {
+    if (!parse_float(value, -90.0f, 90.0f, &cfg->latitude)) return false;
+  } else if (strcmp(key, "longitude") == 0) {
+    if (!parse_float(value, -180.0f, 180.0f, &cfg->longitude)) return false;
   } else {
     return false;
   }
@@ -234,19 +245,22 @@ size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* 
 }
 
 size_t summary_json(const StateSummary& s, const TrapConfig& c, char* out, size_t size) {
-  char time[21], battery[16], temperature[16];
+  char time[21], battery[16], temperature[16], latitude[16], longitude[16];
   format_utc(s.utc_s, time);
-  json_number(s.battery_v, battery);
-  json_number(s.temperature_c, temperature);
+  json_number(s.battery_v, 2, battery);
+  json_number(s.temperature_c, 2, temperature);
+  // Five decimals are about a metre, as close as a float holds a longitude.
+  json_number(c.latitude, 5, latitude);
+  json_number(c.longitude, 5, longitude);
   // Core fields in the order of the FieldMesh readings table, then the trap's own fields.
   // qualityFlags bit 0: the daily picture did not show a clear view.
   const int n = snprintf(
       out, size,
       "{\"datetime\":\"%s\",\"nodeId\":\"%s\",\"seqNum\":%" PRIu32
       ",\"sensorPresent\":0,\"qualityFlags\":%d,\"configVersion\":1,\"batVoltage\":%s,"
-      "\"airTemp\":%s,\"trapPasses\":%" PRIu32 ",\"trapFreeMB\":%" PRIu32
-      ",\"trapViewClear\":%s}\n",
-      time, c.trap_id, s.seq, s.view_clear ? 0 : 1, battery, temperature, s.passes, s.free_mb,
-      s.view_clear ? "true" : "false");
+      "\"airTemp\":%s,\"latitude\":%s,\"longitude\":%s,\"trapPasses\":%" PRIu32
+      ",\"trapFreeMB\":%" PRIu32 ",\"trapViewClear\":%s}\n",
+      time, c.trap_id, s.seq, s.view_clear ? 0 : 1, battery, temperature, latitude, longitude,
+      s.passes, s.free_mb, s.view_clear ? "true" : "false");
   return fitted(n, out, size);
 }
