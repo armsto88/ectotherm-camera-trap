@@ -1428,3 +1428,25 @@
   entered.
 - **Rejected:** Matching and storing bucket labels only when `trapsort evaluate` runs (labels wait
   for an evaluation, and evaluating would also write labels).
+
+## 127. Where do an exported season's project title and contact come from?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** They are typed at the export, both required:
+  `trapsort export <season> --project <title> --contact <name>`.
+- **Reason:** Camtrap DP requires a project title and at least one contributor, and neither is on
+  the trap's card; a project and a person belong to the survey, not to a trap.
+- **Rejected:** A `project.cfg` in each season folder (one more file to know and write for every
+  season); a title made from the trap's name and contributors from the labels (a package that
+  looks complete but names no real project or contact).
+
+## 128. Where does an exported package sit?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** In the season folder, next to `card/`: `datapackage.json` and the three tables,
+  naming each picture as `card/pictures/<day>/<file>`.
+- **Reason:** Camtrap DP allows a picture's path only inside the package's folder or as a web
+  address, and a season holds up to about 27 GB of pictures; this way nothing is copied and the
+  package stays next to the data it describes.
+- **Rejected:** A package elsewhere with copies of the pictures (tens of gigabytes at every
+  export); pictures named by their full file address (valid only on one computer).

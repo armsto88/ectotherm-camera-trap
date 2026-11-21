@@ -7,11 +7,13 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from .camtrapdp import ExportError, export_camtrap_dp
 from .card import CardError, import_card, read_season, write_sorting
 from .empty import DEFAULT_THRESHOLD, mark_empty
 from .evaluate import PlanError, match_bucket_checks, read_bucket_checks
 from .labels import LabelError, LabelStore
 from .review import serve_review
+from .summary import passes_per_survey_day
 
 
 def _import(args: argparse.Namespace) -> int:
@@ -78,6 +80,28 @@ def _bucket(args: argparse.Namespace) -> int:
     return 0
 
 
+def _summarise(args: argparse.Namespace) -> int:
+    season = read_season(args.season)
+    counts = passes_per_survey_day(season, LabelStore(args.season / "labels.csv"))
+    print(f"Passes per survey day at trap {season.trap_id}; passes, not animals: one animal can")
+    print("pass several times.")
+    print("survey_day,group_or_species,direction,passes")
+    for count in counts:
+        print(f"{count.survey_day},{count.name},{count.direction},{count.passes}")
+    return 0
+
+
+def _export(args: argparse.Namespace) -> int:
+    season = read_season(args.season)
+    labels = LabelStore(args.season / "labels.csv")
+    export_camtrap_dp(season, labels, project=args.project, contact=args.contact)
+    print(
+        f"Exported trap {season.trap_id} as a Camera Trap Data Package: "
+        f"{args.season / 'datapackage.json'} and its three tables"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="trapsort", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -116,10 +140,24 @@ def main(argv: list[str] | None = None) -> int:
     bucket.add_argument("checks", type=Path, help="bucket_checks.csv of the field phase")
     bucket.set_defaults(run=_bucket)
 
+    summarising = commands.add_parser(
+        "summarise", help="passes per survey day by group or species and direction"
+    )
+    summarising.add_argument("season", type=Path, help="the season folder")
+    summarising.set_defaults(run=_summarise)
+
+    exporting = commands.add_parser(
+        "export", help="export a season as a Camera Trap Data Package, into its season folder"
+    )
+    exporting.add_argument("season", type=Path, help="the season folder")
+    exporting.add_argument("--project", required=True, help="the title of the survey project")
+    exporting.add_argument("--contact", required=True, help="the person to ask about the data")
+    exporting.set_defaults(run=_export)
+
     args = parser.parse_args(argv)
     try:
         return args.run(args)
-    except (CardError, LabelError, PlanError) as error:
+    except (CardError, LabelError, PlanError, ExportError) as error:
         print(f"trapsort: {error}", file=sys.stderr)
         return 1
 

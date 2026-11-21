@@ -613,11 +613,13 @@ def passes_per_survey_day(season: Season, labels: LabelStore) -> list[DayCount]:
     """Passes per survey day by group or species and direction; never called animals."""
 
 # sorting/trapsort/camtrapdp.py
-def export_camtrap_dp(season: Season, labels: LabelStore, out: Path) -> None:
-    """Writes datapackage.json, deployments.csv, media.csv and observations.csv, with the
-    placement and side A in the deployment; people's labels as classified by a person, the
-    model type of an unsorted pass as classified by machine; raises ExportError when the card's
-    trap.cfg holds no coordinates."""
+def export_camtrap_dp(season: Season, labels: LabelStore, *, project: str,
+                      contact: str) -> None:
+    """Writes datapackage.json, deployments.csv, media.csv and observations.csv into the season
+    folder, next to card/, with the project title and contact, the placement and side A in the
+    deployment; people's labels as classified by a person, the model type of an unsorted pass
+    as classified by machine; raises ExportError when the card's trap.cfg holds no
+    coordinates."""
 
 # sorting/trapsort/evaluate.py
 @dataclass
@@ -756,6 +758,8 @@ A season is a folder; every `trapsort` command except `import` takes it.
 card/                          the card copy, as `trapsort import` copied it; never changed
 sorting.csv                    the computer's empty marks, written again by each `trapsort sort`
 labels.csv                     people's labels and bucket labels; only ever appended to
+datapackage.json               the Camtrap DP export, with deployments.csv, media.csv and
+                               observations.csv, written again by each `trapsort export`
 ```
 
 - `sorting.csv`: `picture,pass_id,survey_day,empty,difference`, one row per picture, with
@@ -768,14 +772,18 @@ labels.csv                     people's labels and bucket labels; only ever appe
   bucket during the field phase, and a row with `animal`, `name` and `group` empty for a check
   that found nothing; `checked_at` in ISO 8601 with its time zone. An animal matches the earliest unmatched pass since the previous
   check whose pictures show its group; passes that went through come before turned-back ones.
-- The Camtrap DP export: one deployment per trap season, placed at the coordinates in the card's
-  `trap.cfg`; one media row per picture; one event-level observation per pass, with
-  `observationType` `animal`, `blank` or `unclassified`, the group or name from the labels,
-  `classificationMethod` `human`, and the direction in `observationComments`. A pass nobody sorted
-  takes the model type with `classificationMethod` `machine`, `classifiedBy` the model version and
+- The Camtrap DP export (version 1.0.1), in the season folder so that each picture is named as
+  `card/pictures/<day>/<file>` (entry 128), with the project title and contact typed at the
+  export (entry 127): one deployment per trap season, placed at the coordinates in the card's
+  `trap.cfg`; one media row per picture of a pass; one event-level observation per pass and
+  animal people gave it, with `observationType` `animal`, `blank`, `unknown` (every picture "can't
+  tell") or `unclassified`, the species name in `scientificName`, the group in the tag
+  `group:<group>`, `classificationMethod` `human`, and the direction in `observationComments`. A
+  pass nobody sorted takes the model type in the tag `modelType:<type>`, with
+  `classificationMethod` `machine`, `classifiedBy` the model version and
   `classificationProbability`. The deployment's `deploymentTags` carry `placement:line` or
   `placement:end` and `sideA:<words>`. A picture's time is the pass's start plus half a second per
-  picture before it, noted as estimated in `mediaComments`.
+  picture before it, rounded down to the second, noted as estimated in `mediaComments`.
 
 ### A bench run
 `plan.csv`: `planned_at,model,body_length_mm,height_mm,speed_mm_s,temperature_c,light,direction`,

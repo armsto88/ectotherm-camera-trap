@@ -242,7 +242,7 @@ test carrying `# spec: <id>`.
   - `2a1668f9` A bucket animal labels its pictures
   - `4296a7e0` The model type is hidden in the pilot
   - `37dd1930` The model type is suggested after the pilot
-- [ ] 6.4 Build `passes_per_survey_day` and `export_camtrap_dp`, with the commands `trapsort
+- [x] 6.4 Build `passes_per_survey_day` and `export_camtrap_dp`, with the commands `trapsort
   summarise` and `trapsort export`; the export places the deployment at the coordinates in the
   card's `trap.cfg` and stops without them, tags it with the placement and side A, and exports
   people's labels as classified by a person and the model type of an unsorted pass as classified
