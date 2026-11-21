@@ -48,7 +48,7 @@ test carrying `# spec: <id>`.
   - `94733795` FieldMesh accepts the summary
   Done when: unit tests show coordinates read from `trap.cfg`, a latitude of 91 rejected, and a
   summary with and without coordinates both valid against the FieldMesh contract.
-- [ ] 2.6 Extend `records` for the link and the model: `placement`, `side_a`, `send_every_h`,
+- [x] 2.6 Extend `records` for the link and the model: `placement`, `side_a`, `send_every_h`,
   `link_timeout_s` and `config_version` in `TrapConfig`, read by `parse_config` and written back by
   `config_text`; `pilot`, the model result and the model version in `PassRecord` and the pass
   file's new columns; `trapKind` in `summary_json`; and `pass_reading_json` (changes what 2.3

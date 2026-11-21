@@ -2,11 +2,79 @@
 
 #include <inttypes.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 namespace {
+
+// Builds one line of text in a fixed buffer; once something does not fit, the line is empty and
+// its length 0.
+class Text {
+ public:
+  Text(char* out, size_t size) : out_(out), size_(size) {
+    if (size_ > 0) out_[0] = '\0';
+  }
+
+  void add(const char* format, ...) __attribute__((format(printf, 2, 3))) {
+    if (!ok_) return;
+    va_list args;
+    va_start(args, format);
+    const int n = vsnprintf(out_ + n_, size_ - n_, format, args);
+    va_end(args);
+    if (n < 0 || n_ + static_cast<size_t>(n) >= size_) {
+      ok_ = false;
+    } else {
+      n_ += static_cast<size_t>(n);
+    }
+  }
+
+  void add_char(char ch) {
+    if (!ok_) return;
+    if (n_ + 1 >= size_) {
+      ok_ = false;
+      return;
+    }
+    out_[n_++] = ch;
+    out_[n_] = '\0';
+  }
+
+  // A CSV field, quoted with quotes doubled when it holds a comma, quote or line break.
+  void add_csv_field(const char* s) {
+    const char* d = s ? s : "";
+    const bool quote = strpbrk(d, ",\"\r\n") != nullptr;
+    if (quote) add_char('"');
+    for (; *d; ++d) {
+      if (*d == '"') add_char('"');
+      add_char(*d);
+    }
+    if (quote) add_char('"');
+  }
+
+  // A JSON string in quotes; quotes and backslashes escaped, control characters left out.
+  void add_json_string(const char* s) {
+    add_char('"');
+    for (const char* d = s ? s : ""; *d; ++d) {
+      if (static_cast<unsigned char>(*d) < 0x20) continue;
+      if (*d == '"' || *d == '\\') add_char('\\');
+      add_char(*d);
+    }
+    add_char('"');
+  }
+
+  size_t done() {
+    if (ok_) return n_;
+    if (size_ > 0) out_[0] = '\0';
+    return 0;
+  }
+
+ private:
+  char* out_;
+  size_t size_;
+  size_t n_ = 0;
+  bool ok_ = true;
+};
 
 // Date of a day number counted from 1970-01-01 (proleptic Gregorian calendar).
 void civil_from_days(int64_t z, int* year, unsigned* month, unsigned* day) {
@@ -74,15 +142,6 @@ const char* fault_text(FaultKind k) {
   }
 }
 
-// The length of what snprintf wrote, or 0 with an empty out when it did not fit.
-size_t fitted(int n, char* out, size_t size) {
-  if (n < 0 || static_cast<size_t>(n) >= size) {
-    if (size > 0) out[0] = '\0';
-    return 0;
-  }
-  return static_cast<size_t>(n);
-}
-
 // A value as a JSON number with the given decimals, or null when it is not finite (not measured
 // or not set).
 void json_number(float v, int decimals, char out[16]) {
@@ -121,6 +180,25 @@ bool parse_float(const char* s, float lo, float hi, float* out) {
   return true;
 }
 
+// The shortest text of v that strtof reads back to exactly v.
+void float_text(float v, char out[24]) {
+  for (int precision = 6; precision <= 9; ++precision) {
+    snprintf(out, 24, "%.*g", precision, static_cast<double>(v));
+    if (strtof(out, nullptr) == v) return;
+  }
+}
+
+// Side A in words: up to 31 bytes, without control characters, quotes, backslashes or '|',
+// which separates the tags of the Camtrap DP export.
+bool valid_side_a(const char* s, size_t n) {
+  if (n > 31) return false;
+  for (size_t i = 0; i < n; ++i) {
+    const unsigned char ch = static_cast<unsigned char>(s[i]);
+    if (ch < 0x20 || ch == 0x7f || ch == '"' || ch == '\\' || ch == '|') return false;
+  }
+  return true;
+}
+
 // Applies one key and value to cfg; false for an unknown key or a bad value.
 bool apply_setting(const char* key, const char* value, TrapConfig* cfg) {
   long n;
@@ -148,6 +226,27 @@ bool apply_setting(const char* key, const char* value, TrapConfig* cfg) {
     if (!parse_float(value, -90.0f, 90.0f, &cfg->latitude)) return false;
   } else if (strcmp(key, "longitude") == 0) {
     if (!parse_float(value, -180.0f, 180.0f, &cfg->longitude)) return false;
+  } else if (strcmp(key, "placement") == 0) {
+    if (strcmp(value, "line") == 0) {
+      cfg->placement = Placement::Line;
+    } else if (strcmp(value, "end") == 0) {
+      cfg->placement = Placement::End;
+    } else {
+      return false;
+    }
+  } else if (strcmp(key, "side_a") == 0) {
+    const size_t len = strlen(value);
+    if (!valid_side_a(value, len)) return false;
+    memcpy(cfg->side_a, value, len + 1);
+  } else if (strcmp(key, "send_every_h") == 0) {
+    if (!parse_long(value, 1, 168, &n)) return false;
+    cfg->send_every_h = static_cast<uint8_t>(n);
+  } else if (strcmp(key, "link_timeout_s") == 0) {
+    if (!parse_long(value, 30, 600, &n)) return false;
+    cfg->link_timeout_s = static_cast<uint16_t>(n);
+  } else if (strcmp(key, "config_version") == 0) {
+    if (!parse_long(value, 0, 65535, &n)) return false;
+    cfg->config_version = static_cast<uint16_t>(n);
   } else {
     return false;
   }
@@ -189,6 +288,27 @@ bool parse_config(const char* text, TrapConfig* out) {
   return true;
 }
 
+size_t config_text(const TrapConfig& c, char* out, size_t size) {
+  Text t(out, size);
+  char number[24];
+  t.add("trap_id=%s\nutc_offset_min=%d\npilot_mode=%s\nempty_view_hour=%u\n", c.trap_id,
+        c.utc_offset_min, c.pilot_mode ? "true" : "false", c.empty_view_hour);
+  float_text(c.drop_threshold, number);
+  t.add("drop_threshold=%s\n", number);
+  if (isfinite(c.latitude)) {
+    float_text(c.latitude, number);
+    t.add("latitude=%s\n", number);
+  }
+  if (isfinite(c.longitude)) {
+    float_text(c.longitude, number);
+    t.add("longitude=%s\n", number);
+  }
+  t.add("placement=%s\nside_a=%s\nsend_every_h=%u\nlink_timeout_s=%u\nconfig_version=%u\n",
+        c.placement == Placement::End ? "end" : "line", c.side_a, c.send_every_h,
+        c.link_timeout_s, c.config_version);
+  return t.done();
+}
+
 void survey_day(uint32_t utc_s, int16_t utc_offset_min, char out[11]) {
   const int64_t local = static_cast<int64_t>(utc_s) + static_cast<int64_t>(utc_offset_min) * 60;
   int64_t days = local >= 0 ? local / 86400 : (local - 86399) / 86400;
@@ -199,7 +319,7 @@ void survey_day(uint32_t utc_s, int16_t utc_offset_min, char out[11]) {
 
 const char* pass_csv_header() {
   return "pass_id,start_utc,end_utc,direction,heights_a,heights_b,noticed_by,pictures,"
-         "dropped_empty,judged_empty\n";
+         "dropped_empty,judged_empty,pilot,model_type,model_confidence,model_version\n";
 }
 
 size_t pass_csv_line(const PassRecord& r, char* out, size_t size) {
@@ -208,40 +328,30 @@ size_t pass_csv_line(const PassRecord& r, char* out, size_t size) {
   format_utc(r.end_utc_s, end);
   heights_text(r.pass.heights_a, heights_a);
   heights_text(r.pass.heights_b, heights_b);
-  const int n = snprintf(out, size, "%s,%s,%s,%s,%s,%s,%s,%s,%u,%s\n", r.pass_id, start, end,
-                         direction_text(r.pass.direction), heights_a, heights_b,
-                         noticed_by_text(r.pass), r.pictures ? r.pictures : "",
-                         static_cast<unsigned>(r.dropped_empty),
-                         r.judged_empty ? r.judged_empty : "");
-  return fitted(n, out, size);
+  Text t(out, size);
+  t.add("%s,%s,%s,%s,%s,%s,%s,%s,%u,%s,%s,", r.pass_id, start, end,
+        direction_text(r.pass.direction), heights_a, heights_b, noticed_by_text(r.pass),
+        r.pictures ? r.pictures : "", static_cast<unsigned>(r.dropped_empty),
+        r.judged_empty ? r.judged_empty : "", r.pilot ? "true" : "false");
+  if (r.model.type != ModelType::None) {
+    t.add("%s,%.2f,", model_type_name(r.model.type), static_cast<double>(r.model.confidence));
+    t.add_csv_field(r.model_version);
+  } else {
+    t.add(",,");
+  }
+  t.add_char('\n');
+  return t.done();
 }
 
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out,
                       size_t size) {
   char time[21];
   format_utc(utc_s, time);
-  const int head = snprintf(out, size, "%s,%s,", time, fault_text(kind));
-  if (!fitted(head, out, size)) return 0;
-  size_t n = static_cast<size_t>(head);
-
-  // A detail with a comma, quote or line break is quoted, with quotes doubled.
-  const char* d = detail ? detail : "";
-  const bool quote = strpbrk(d, ",\"\r\n") != nullptr;
-  if (quote) {
-    if (n + 1 >= size) return fitted(-1, out, size);
-    out[n++] = '"';
-  }
-  for (; *d; ++d) {
-    const size_t needed = (*d == '"') ? 2 : 1;
-    if (n + needed >= size) return fitted(-1, out, size);
-    if (*d == '"') out[n++] = '"';
-    out[n++] = *d;
-  }
-  if (n + (quote ? 2 : 1) >= size) return fitted(-1, out, size);
-  if (quote) out[n++] = '"';
-  out[n++] = '\n';
-  out[n] = '\0';
-  return n;
+  Text t(out, size);
+  t.add("%s,%s,", time, fault_text(kind));
+  t.add_csv_field(detail);
+  t.add_char('\n');
+  return t.done();
 }
 
 size_t summary_json(const StateSummary& s, const TrapConfig& c, char* out, size_t size) {
@@ -254,13 +364,41 @@ size_t summary_json(const StateSummary& s, const TrapConfig& c, char* out, size_
   json_number(c.longitude, 5, longitude);
   // Core fields in the order of the FieldMesh readings table, then the trap's own fields.
   // qualityFlags bit 0: the daily picture did not show a clear view.
-  const int n = snprintf(
-      out, size,
-      "{\"datetime\":\"%s\",\"nodeId\":\"%s\",\"seqNum\":%" PRIu32
-      ",\"sensorPresent\":0,\"qualityFlags\":%d,\"configVersion\":1,\"batVoltage\":%s,"
-      "\"airTemp\":%s,\"latitude\":%s,\"longitude\":%s,\"trapPasses\":%" PRIu32
-      ",\"trapFreeMB\":%" PRIu32 ",\"trapViewClear\":%s}\n",
-      time, c.trap_id, s.seq, s.view_clear ? 0 : 1, battery, temperature, latitude, longitude,
-      s.passes, s.free_mb, s.view_clear ? "true" : "false");
-  return fitted(n, out, size);
+  Text t(out, size);
+  t.add("{\"datetime\":\"%s\",\"nodeId\":\"%s\",\"seqNum\":%" PRIu32
+        ",\"sensorPresent\":0,\"qualityFlags\":%d,\"configVersion\":%u,\"batVoltage\":%s,"
+        "\"airTemp\":%s,\"latitude\":%s,\"longitude\":%s,\"trapKind\":\"state\","
+        "\"trapPasses\":%" PRIu32 ",\"trapFreeMB\":%" PRIu32 ",\"trapViewClear\":%s}\n",
+        time, c.trap_id, s.seq, s.view_clear ? 0 : 1, c.config_version, battery, temperature,
+        latitude, longitude, s.passes, s.free_mb, s.view_clear ? "true" : "false");
+  return t.done();
+}
+
+size_t pass_reading_json(const PassRecord& r, const TrapConfig& c, uint32_t seq, char* out,
+                         size_t size) {
+  char time[21];
+  format_utc(r.start_utc_s, time);
+  unsigned pictures = 0;
+  if (r.pictures && r.pictures[0]) {
+    pictures = 1;
+    for (const char* p = r.pictures; *p; ++p) pictures += *p == ';';
+  }
+  // The core fields up to batVoltage, which a pass does not measure, then the trap's own keys;
+  // FieldMesh refuses lists, so the beam heights go as their bits.
+  Text t(out, size);
+  t.add("{\"datetime\":\"%s\",\"nodeId\":\"%s\",\"seqNum\":%" PRIu32
+        ",\"sensorPresent\":0,\"qualityFlags\":0,\"configVersion\":%u,\"batVoltage\":null,"
+        "\"trapKind\":\"pass\",\"trapPassId\":\"%s\",\"trapDirection\":\"%s\","
+        "\"trapHeightsA\":%u,\"trapHeightsB\":%u,\"trapNoticedBy\":\"%s\",\"trapPilot\":%s,",
+        time, c.trap_id, seq, c.config_version, r.pass_id, direction_text(r.pass.direction),
+        r.pass.heights_a, r.pass.heights_b, noticed_by_text(r.pass), r.pilot ? "true" : "false");
+  if (r.model.type != ModelType::None) {
+    t.add("\"trapModelType\":\"%s\",\"trapModelConf\":%.2f,\"trapModelVersion\":",
+          model_type_name(r.model.type), static_cast<double>(r.model.confidence));
+    t.add_json_string(r.model_version);
+  } else {
+    t.add("\"trapModelType\":null,\"trapModelConf\":null,\"trapModelVersion\":null");
+  }
+  t.add(",\"trapPictures\":%u}\n", pictures);
+  return t.done();
 }

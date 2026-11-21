@@ -86,14 +86,14 @@ send_every_h=24
 | `trap_id` | the trap's name, also its node in FieldMesh | `ECT_UNSET`; set it |
 | `utc_offset_min` | local time minus UTC in minutes, for survey days and daily times | `0` |
 | `placement` | `line` in the fence line, `end` at a fence end | `line` |
-| `side_a` | side A in words, up to 31 characters | empty |
+| `side_a` | side A in words, up to 31 characters, without `\|`, `"` or `\` | empty |
 | `latitude`, `longitude` | where the trap stands, in decimal degrees; needed for the export | not set |
 | `pilot_mode` | `true` marks pictures the filter judges empty instead of dropping them, and hides the model's type while people sort | `true` |
 | `empty_view_hour` | local hour of the daily empty-view picture and summary | `12` |
 | `drop_threshold` | the filter's largest difference from the empty view still counted as empty | `0.03` |
 | `send_every_h` | hours between sends, 1 to 168 | `24` |
 | `link_timeout_s` | longest try per send in seconds, 30 to 600 | `180` |
-| `config_version` | raised by the trap each time it takes new settings from FieldMesh; leave it | `0` |
+| `config_version` | raised by the trap each time it takes new settings from FieldMesh; leave it | `1` |
 
 Settings sent from FieldMesh are checked by the same rules and written back to `trap.cfg`.
 
