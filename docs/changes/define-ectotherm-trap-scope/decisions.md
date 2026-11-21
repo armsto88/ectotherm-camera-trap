@@ -979,3 +979,219 @@
 - **Reason:** A test run must be sorted in full before it is evaluated (entry 79); without this
   mark, a picture nobody looked at and one nobody could tell look the same.
 - **Rejected:** Not storing it (an unfinished run cannot be told from a finished one).
+
+## 85. Does every trap have a link from the start?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. Every trap has a mobile-network modem from version 1, built after the user's
+  Auris recorder, and sends to FieldMesh on its own, with no hub on the site. Letting the trap feed
+  FieldMesh on its own, until now a later change (issue #1), becomes part of this change.
+- **Reason:** Raised by the user after the stakeholder summary: the trap needs connectivity from the
+  start, with a modem in each trap as in Auris. A trap that reports shows a fault within a day
+  instead of at the end of the season, and its results reach FieldMesh without a visit. The accepted
+  cost: each trap gains a modem, a SIM and a data plan in its cost, and power for every connection;
+  at sites without coverage it gains nothing.
+- **Rejected:** Version 1 without radio (a fault early in the season goes unseen until the visit).
+- **Replaces:** 51 (in the radio: no radio in version 1 becomes a mobile-network modem in every
+  trap; the daily state summary on the memory card stays).
+
+## 86. How often does the trap send?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Once a day: the day's pass records and the state summary in one connection. How
+  often can be changed in the trap's settings, for example to send more often during the pilot.
+- **Reason:** Enough to catch a fault within a day and keep results current. By rough estimate, not
+  measured, a connection in good coverage costs about 1 to 2 mAh, so once a day adds a few percent
+  to the trap's daily use of about 25 to 30 mAh, where every hour would roughly double or triple
+  it. The accepted cost: results reach FieldMesh up to a day late.
+- **Rejected:** Every hour (roughly doubles or triples the trap's daily energy by estimate, more in
+  weak coverage, and needs a larger pack and panel).
+
+## 87. Does the trap take anything back over the link?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes: new settings, such as how often to send and pilot mode, and signed firmware
+  updates, as in Auris.
+- **Reason:** A trap stands three to six months without a visit, and version 1 firmware will have
+  faults that only the pilot finds; updates over the air fix them without visits, and the model on
+  the trap reaches the traps the same way. The accepted cost: the most work of the options, and an
+  update needs a safe way back to the firmware before it, or a bad one stops a trap in mid-season.
+- **Rejected:** Settings only (every firmware fix and every new model needs a visit to every trap);
+  nothing (nothing can be corrected from afar for a whole season).
+
+## 88. What leaves the trap over the link?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Only results: the pass records and the daily state summary, never pictures. The
+  pictures stay on the memory card.
+- **Reason:** The user's choice in the brainstorm: send the inference, not photos. Results are
+  small, so each connection stays short. The accepted cost: nobody far away can check the trap's
+  own judgement that its view is clear, or look at a surprising record.
+- **Rejected:** Also sending one small picture of the empty passage a day, a few kilobytes, so a
+  person can see a dirty lens or a blocked passage from afar (turned down without a note).
+
+## 89. What happens where there is no coverage?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The memory card stays the full record. Without coverage the trap works exactly as
+  without a modem, and sends what is waiting once it gets through.
+- **Reason:** Survey sites are anywhere (entry 12), many with patchy coverage; nothing is lost when
+  the link fails.
+- **Rejected:** The link as the main store, with the card only as a buffer (records would be lost
+  at sites with poor coverage).
+
+## 90. Does the trap have a satellite link?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Not in this change; sites with no coverage at all rely on the memory card.
+- **Reason:** A satellite modem adds cost and power; the California bucket-trap trial shows that
+  one can be added later where needed.
+- **Rejected:** Room on the board for a satellite modem from the start (cost and board space for a
+  part not yet needed).
+
+## 91. Where does the trap sit in the fence?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** In the fence line or at a fence end; the same unit serves both, and the survey
+  chooses.
+- **Reason:** The user: the concept is the same wherever the bucket sits; animals walk through it
+  and trigger the camera. Cameras at fence ends (AHDriFT) are a layout surveys already use. The
+  accepted cost: two placements to test and to report, and a pass's direction means something
+  different in each: which side of the fence, or along the fence.
+- **Rejected:** In the fence line only (as planned until now; the user does not want the placement
+  tied down).
+- **Replaces:** 27 (the passage set into the fence line becomes a choice between the fence line and
+  a fence end).
+
+## 92. How is a pass's direction read in either placement?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The trap's settings note whether it sits in the fence line or at a fence end, and
+  which way its first opening faces, so each pass's direction can be read.
+- **Reason:** With one unit for both places, a direction means nothing without its placement.
+- **Rejected:** The placement noted only on the field sheet (it gets separated from the records).
+
+## 93. Does the model on the trap come into this change?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. A first model on the trap gives each pass a type of animal, not a species, and
+  how sure it is. It is trained on pictures from others, such as the pictures from above that
+  California's wildlife agency took in upturned buckets at drift fences, and checked on the trap's
+  own bench pictures before it goes on the traps. Its result travels with the pass records. A model
+  on a computer stays out.
+- **Reason:** Chosen on the round 1 page against the recommendation, without a note. The user sees
+  the model on the trap as part of the idea, and the link is to send its results rather than
+  pictures; training on others' pictures gets round the lack of named pictures of the trap's own.
+  The accepted cost: it depends on pictures not yet known to be available, colour daylight pictures
+  may not carry over to the trap's infrared ones, and version 1 takes longer.
+- **Rejected:** The model in a later change, with the link leaving room for its result (until then
+  the link would report only that something passed, which way and how big, not what it was).
+- **Replaces:** 75 (in part: a learned model on the trap comes into this change; a model on a
+  computer stays out).
+
+## 94. How large are the pack and the panel?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** They grow as far as the modem and the model need; their size is set in the design
+  step.
+- **Reason:** The modem adds power for every connection, and the user said bigger batteries are
+  fine.
+- **Rejected:** Keeping the two-cell pack and limiting how often the trap sends (the battery would
+  decide how useful the link is).
+- **Replaces:** 53 (two 18650 cells becomes a pack sized in the design step for the modem and the
+  model).
+
+## 95. What does the proposal say about the closest existing traps?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** It adds the California upturned-bucket cameras (Pepperwood Preserve, UC Nature,
+  California's wildlife agency) to the prior art, and states what this trap adds: lasers that
+  notice cold animals, the direction and size of each pass, months on solar, a modem in every
+  trap, and a model on the trap.
+- **Reason:** They are the closest traps known, found in the brainstorm after the stakeholder
+  summary; a reviewer who knows them would ask. As with the light-beam trigger (entry 8), the
+  proposal states what this trap adds and claims no first.
+- **Rejected:** Leaving the prior art as it is (the closest traps would be missing).
+
+## 96. Which types does the first model tell apart?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Frog or toad, lizard, snake, other animal, and empty. Newts, salamanders and turtles
+  count as other until the trap's own named pictures teach the model them, by a later update.
+- **Reason:** The free pictures from others, taken from above at drift fences, hold thousands of
+  each of these types (about 130,000 lizard, 67,000 snake and 22,000 frog or toad pictures), but no
+  newts, about 300 salamanders and about 900 turtles; each type the first model learns can be
+  checked fairly. The accepted cost: newts, central to European surveys, show only as other in the
+  first model, and frog and toad stay together.
+- **Rejected:** The seven groups people use, plus empty (the model would be weakest exactly where
+  pictures are missing, or wait for the trap's own).
+
+## 97. What may the model's result do on the trap?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** It only labels: the type and how sure the model is go into the pass record and over
+  the link. The model deletes nothing, and the filter on the trap stays as planned.
+- **Reason:** A model checked only on bench pictures should not decide what is kept; its mistakes
+  can be counted against the pictures. The accepted cost: the card keeps empty pictures the model
+  could have recognised.
+- **Rejected:** Also dropping pictures the model is sure are empty, outside pilot mode (its
+  mistakes would delete animals that nobody can count afterwards).
+
+## 98. Do people see the model's type while they sort?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Not in pilot mode: there people sort without seeing it, so their groups check the
+  model. Outside the pilot it shows as a suggestion that people confirm or change.
+- **Reason:** People tend to follow a suggestion; hiding it in the pilot gives an honest measure of
+  the model, and later surveys get the time saved. The accepted cost: sorting the pilot takes as
+  long as without a model.
+- **Rejected:** Always shown (the pilot could no longer tell how good the model is); never shown
+  (sorting would never get faster).
+
+## 99. What if the model is not good enough in time?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The trap goes into the field without a model, and the model follows by update once
+  it passes its check, trained further on the trap's own named pictures.
+- **Reason:** The trap first, as the user set the order; with updates over the air (entry 87), a
+  later model costs no visit. The infrared gap may hold the model back: in the pictures from others,
+  lizards and snakes are almost only in daytime colour, while the trap takes infrared. The accepted
+  cost: the first field weeks may report no animal types.
+- **Rejected:** Version 1 waits for the model (the field season, and with it the pictures that
+  would improve the model, slips).
+
+## 100. When is the model good enough to go on the traps?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The model's targets are set from the controlled tests and fixed before the field
+  phase, like the trap's own (entry 36).
+- **Reason:** The same rule as for the trap; a number set now would be a guess.
+- **Rejected:** A fixed bar now, such as the right type for nine in ten usable pictures (set
+  without any data on what is reachable).
+
+## 101. Do the results measure the model?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. Beside trigger, usable picture and identification, the results report how
+  often the model's type matches the group a person gave.
+- **Reason:** The model's quality is measured the same way as the rest of the trap.
+- **Rejected:** Measuring the model outside the trap's results (two places to look, and the model
+  could pass unmeasured).
+
+## 102. Does a pass record say which model judged it?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes. Each pass record names the model version that judged it.
+- **Reason:** Results stay traceable after a model update.
+- **Rejected:** The version only in the daily summary (a pass could not be tied to its model when
+  an update arrives in mid-day).
+
+## 103. Who trains the first model, and where?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The project trains it on a computer. The FieldMesh tools to check data, train
+  models and upload them to devices stay a later change (FieldMesh issue 97). A model that sorts
+  pictures on a computer stays out too (entry 93).
+- **Reason:** Keeps this change to the trap; the FieldMesh issue already holds those tools.
+- **Rejected:** Building the FieldMesh tools in this change (a second system to build before the
+  trap has run a season).
