@@ -1450,3 +1450,112 @@
   package stays next to the data it describes.
 - **Rejected:** A package elsewhere with copies of the pictures (tens of gigabytes at every
   export); pictures named by their full file address (valid only on one computer).
+
+## 129. How is the hardware proven before the custom boards are drawn?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Before any custom board is drawn, the whole chain is built on ready-made
+  development boards: the beams, the beam watcher, waking the camera controller, the pictures and
+  the card, read by the sorting tool.
+- **Reason:** The user wants to know the hardware does what it should before paying for a custom
+  board; the wake time only shows end to end, and the sorting tool, already built, gets a real
+  card. The accepted cost: development boards waste current, so the season's power can only be
+  added up from each part's measured current.
+- **Rejected:** Testing the risky parts on separate rigs (the wake time only shows end to end);
+  drawing the custom boards first and running the bench tests on them, as planned until now (a
+  fault found on the bench means a new board).
+
+## 130. Which chips does the prototype use?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The trap's own chips: an ESP32-S3 development board as camera controller, an
+  ATtiny3216 on a small breakout board as beam watcher, laser diodes and photodiodes on strip
+  board in the printed beam walls.
+- **Reason:** What the prototype measures holds for the trap only on the same chips, and the
+  firmware moves to the custom board with only its pins changed.
+- **Rejected:** Whatever is quickest, such as the old prototype's ESP32 and OV2640 with an Arduino
+  board as beam watcher (results on other chips say little about the trap; the firmware is
+  written twice).
+
+## 131. What must the prototype show before the custom boards are drawn?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Every bench test of the plan runs on the prototype first, the roof laser, a side
+  view and colour included.
+- **Reason:** Chosen on the round 1 page against the recommendation to run first only the tests
+  whose answers change the board; the user wants the hardware settled as a whole before the board.
+  The accepted cost: weeks more before the board.
+- **Rejected:** Only the tests whose answers change the board (beams, pictures, wake time, camera,
+  light, PIR sensor, model time), the rest on the board; only showing that the chain works, the
+  detailed tests on the board (the board drawn before beams, camera and wake time are known to be
+  good enough).
+
+## 132. Is the mobile modem part of the prototype?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** No: the prototype records to its card only, and the modem is first tried on the
+  custom board, with the Auris design copied over.
+- **Reason:** Chosen on the round 1 page against the recommendation; the modem follows a known
+  design. The accepted cost: a fault in the modem part or its power shows only once the board is
+  made, and a send's energy stays an estimate until then.
+- **Rejected:** The modem on an Auris board or an evaluation board in the prototype, with its
+  driver written and a send measured before the board.
+
+## 133. How is power measured before the custom boards?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** On the prototype each part's current and the energy of a pass, a picture and a
+  model run are measured, and the battery is sized from them before the board; the four-week run
+  for the season comes on the custom board.
+- **Reason:** Only the parts' own currents mean something on development boards, which waste
+  current on regulators and lights.
+- **Rejected:** Leaving the power budget an estimate until the custom board runs.
+
+## 134. Where do the prototype's parts sit?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The printed insert is built first and holds the beam walls and the camera; the
+  development boards sit outside the bucket, wired in.
+- **Reason:** Beams and camera are tested in the real passage, while the boards stay easy to reach
+  and change.
+- **Rejected:** A bench frame without a bucket for the prototype, the insert later.
+
+## 135. What does the prototype give for a pitch?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The material for a pitch is the bench results with their pictures and numbers, and
+  a bench run exported through the sorting tool; a pitch itself is not part of this change.
+- **Reason:** The bench results are what a pitch would rest on; writing the pitch is separate work,
+  as a funding application is.
+- **Rejected:** A pitch summary written as a task of this change.
+
+## 136. Which camera goes on the prototype?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** An OV5640 module made for the ESP32-S3's 24-pin parallel camera connector, without
+  infrared filter, as the design names; the user orders one.
+- **Reason:** The user's OV5647 module is made for a Raspberry Pi and sends its picture over MIPI,
+  which the ESP32-S3 cannot take, and Espressif's camera driver does not support it; with the
+  OV5640 the pictures and the wake time are those of the trap.
+- **Rejected:** Picture tests on a Raspberry Pi with the OV5647 and another camera for the chain
+  (picture results for a sensor and computer the trap will not have); an ESP32-P4 as camera
+  controller, which reads MIPI cameras (reopens the chip choice, draws more power, less mature
+  tools).
+
+## 137. Is the model's speed measured on the prototype?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** Yes: a test model's time per picture on the ESP32-S3 is measured on the prototype
+  before the custom board is drawn.
+- **Reason:** It decides whether the board needs a helper chip for models; not a bench test of the
+  plan until now, but an answer that can change the board.
+- **Rejected:** Measuring it on the custom board.
+
+## 138. What comes first now?
+- **Date:** 2026-11-21
+- **Step:** discuss
+- **Decision:** The prototype and its bench tests come first; the remaining tasks that need only a
+  computer (the written checks of the passage, the model project) follow.
+- **Reason:** The user wants bench-tested hardware, enough to pitch a fully formed idea, before
+  anything else; the sorting tool and the trap's logic that read and write its records are built.
+- **Rejected:** Finishing the tasks that need only a computer first, as chosen until now.

@@ -68,6 +68,13 @@ for the model.
   the solar panel are sized for the modem and the model.
 - Every chip on the trap's boards is one that JLCPCB can assemble, from LCSC's stock where it has
   it; plug-in parts such as the camera module may come from anywhere.
+- Before the trap's own boards are drawn, the whole chain is built on ready-made development boards
+  with the trap's chips and camera, in the printed passage: beams, beam watcher, waking the camera
+  controller, pictures, card, read by the sorting tool. Every bench test runs on it first, and the
+  battery is sized from the parts' measured currents; the season-long run and the mobile modem,
+  after the Auris design, come with the trap's own board. This comes before the remaining work that
+  needs only a computer. The bench results, with their pictures and a bench run exported through
+  the sorting tool, are the material for a pitch.
 - Results report separately whether the trigger fired, whether a usable picture was taken, whether
   the animal was identified, and how often the model's type matched the group a person gave. A
   picture is usable when a person sorting it could give it a group or a name. Missed animals are
@@ -129,11 +136,14 @@ New:
 - Is colour needed to tell species apart? If so, does daylight let in through the top make the
   passage too warm or keep basking animals inside, and does a short white light make animals turn
   back or hurry? (entry 38)
+- Does the mobile modem part work on the trap's first own board, where it is first tried? (entry
+  132)
 - What are the targets for "the trap works" and for the model? Set after the controlled tests.
   (entries 36 and 100)
 
 ## Out of scope
 - A funding application; it becomes its own piece of work if funding is sought (entry 32).
+- Writing a pitch; the bench results are its material (entry 135).
 - Studies of population size, sex ratio or condition; buckets stay for these (entry 16).
 - Juveniles below about 3 cm, such as frogs and toads just out of the water (entry 24).
 - Small mammals, invertebrates and large turtles as design targets (entries 26 and 78).
