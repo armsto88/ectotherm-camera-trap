@@ -41,7 +41,15 @@ struct PassRecord {      // one row of a survey day's pass file
   const char* model_version;  // "" or null when the trap has no model
 };
 
-enum class FaultKind : uint8_t { BeamBlocked, BeamClear, BatteryLow, StorageLow, CameraFailed };
+enum class FaultKind : uint8_t {
+  BeamBlocked,
+  BeamClear,
+  BatteryLow,
+  StorageLow,
+  CameraFailed,
+  LinkFailed,    // a send that did not get through
+  UpdateFailed,  // a firmware or model update refused or fallen back
+};
 
 struct StateSummary {  // the values of one daily summary
   uint32_t utc_s, seq;

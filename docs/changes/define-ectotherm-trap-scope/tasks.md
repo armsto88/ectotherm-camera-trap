@@ -77,7 +77,7 @@ test carrying `# spec: <id>`.
   Tests:
   - `ca7e69c7` New settings arrive
   - `356af091` Invalid settings are refused
-- [ ] 2.9 Build the camera library `updates` (`Manifest`, `verify_manifest`, `FileCheck`) with
+- [x] 2.9 Build the camera library `updates` (`Manifest`, `verify_manifest`, `FileCheck`) with
   rweather/Crypto, following the FieldHub's `firmware_manifest.h`, tested with a test key.
   Tests:
   - `2a4e75f4` An unsigned firmware update is refused

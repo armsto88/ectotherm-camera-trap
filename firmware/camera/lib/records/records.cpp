@@ -250,6 +250,8 @@ const char* fault_text(FaultKind k) {
     case FaultKind::BeamClear: return "beam_clear";
     case FaultKind::BatteryLow: return "battery_low";
     case FaultKind::StorageLow: return "storage_low";
+    case FaultKind::LinkFailed: return "link_failed";
+    case FaultKind::UpdateFailed: return "update_failed";
     default: return "camera_failed";
   }
 }

@@ -337,7 +337,8 @@ struct PassRecord {                           // one row of a survey day's pass 
   const char* model_version;                  // "" when the trap has no model
 };
 
-enum class FaultKind : uint8_t { BeamBlocked, BeamClear, BatteryLow, StorageLow, CameraFailed };
+enum class FaultKind : uint8_t { BeamBlocked, BeamClear, BatteryLow, StorageLow, CameraFailed,
+                                 LinkFailed, UpdateFailed };
 
 struct StateSummary {                         // the values of one daily summary
   uint32_t utc_s, seq;
@@ -509,8 +510,9 @@ struct Manifest {
   uint8_t sha256[32];
 };
 
-/// Reads manifest.json and checks its Ed25519 signature over the exact bytes against the
-/// release key; false on a bad signature or a malformed manifest.
+/// Checks the Ed25519 signature over the exact bytes of manifest.json against the release key,
+/// then reads its first artifact with the role "trap" or "trap-model"; false on a bad signature,
+/// a malformed manifest or a release with nothing for the trap.
 bool verify_manifest(const uint8_t* json, size_t n, const uint8_t signature[64],
                      const uint8_t release_key[32], Manifest* out);
 
