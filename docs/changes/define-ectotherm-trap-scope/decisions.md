@@ -1378,3 +1378,27 @@
 - **Reason:** Camtrap DP has fields for machine classifications, so nothing is passed off as a
   person's.
 - **Rejected:** People's labels only, with unsorted passes left unclassified.
+
+## 123. Where does the logic live that plans a send?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** In the libraries, tested on the computer: `uplink` reads and writes
+  `state/sent.cfg` and gains a send plan that yields a send's readings in order, unconfirmed passes
+  by survey day and line and then the summaries last, gives each pass its seqNum from the confirmed
+  position, moves the position past each confirmed batch and goes back to it for a resend;
+  `records` gains the reading of a stored pass line, so that a stored pass is sent through the same
+  pass reading.
+- **Reason:** The design's interfaces named only the confirmed position's struct, while the
+  scenarios of a day without coverage and a send that breaks off, and the summary sent last, need
+  this logic; in the libraries they are tested on the computer, and the send job on the board only
+  reads files and posts.
+- **Rejected:** The logic in the send job on the board (its scenarios checked only on the bench).
+
+## 124. How does the trap confirm FieldMesh's commands?
+- **Date:** 2026-11-21
+- **Step:** implement
+- **Decision:** As the FieldHub does: each command keeps FieldMesh's command ID with its cursor, the
+  reply's next cursor is kept, and a refused settings command is reported with FieldMesh's outcome
+  `INVALID`, an accepted one with `ACCEPTED`.
+- **Reason:** FieldMesh confirms commands by their ID and knows no outcome `REJECTED`; the design's
+  command held only a cursor, type and payload.

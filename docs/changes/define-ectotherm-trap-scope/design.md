@@ -361,6 +361,10 @@ const char* pass_csv_header();
 /// One pass record as a CSV line; pictures and judged-empty marks as ';'-separated names.
 size_t pass_csv_line(const PassRecord& r, char* out, size_t size);
 
+/// Reads a line of a pass file, as pass_csv_line writes it, back into out, so that a stored pass
+/// is sent as pass_reading_json; its texts point into text. False on a malformed line.
+bool parse_pass_csv_line(const char* line, PassRecord* out, char* text, size_t text_size);
+
 /// One fault as a CSV line for faults.csv.
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out, size_t size);
 
@@ -395,15 +399,47 @@ const char* model_type_name(ModelType t);     // "", "empty", "frog_or_toad", "l
 ```
 
 #### Sending (camera library `uplink`)
-Upload bodies, the confirmed position and FieldMesh's replies; no hardware calls. Uses ArduinoJson.
+Upload bodies, the confirmed position, the order of a send and FieldMesh's replies; no hardware
+calls. Uses ArduinoJson. The send job on the board lists the card's files for a `SendPlan`, reads
+each reading it names, posts `UploadBody`s and confirms or restarts the plan by `judge_reply`.
 
 ```cpp
 // firmware/camera/lib/uplink/uplink.h
 struct SentPosition {                         // kept in state/sent.cfg on the card
-  char pass_day[11];                          // survey day of the last confirmed pass file
-  uint32_t pass_line;                         // last confirmed line in that file
-  uint32_t summary_line;                      // last confirmed line in state/summaries.jsonl
-  uint32_t next_seq;                          // seqNum for the next pass reading
+  char pass_day[11];                          // survey day of the last confirmed pass; "" for none
+  uint32_t pass_line;                         // last confirmed record in that day's pass file
+  uint32_t summary_line;                      // confirmed lines of state/summaries.jsonl
+  uint32_t next_seq;                          // seqNum for the next pass reading, from 1
+};
+
+/// Reads state/sent.cfg; false on malformed text, leaving out unchanged.
+bool parse_sent_position(const char* text, SentPosition* out);
+size_t sent_position_text(const SentPosition& p, char* out, size_t size);
+
+struct ReadingPlace {                         // where one reading of a send lies on the card
+  bool summary;                               // a line of state/summaries.jsonl, else a pass
+  char day[11];                               // survey day of the pass file
+  uint32_t line;                              // record in its file, from 1
+  uint32_t seq;                               // seqNum of a pass reading
+};
+
+/// The readings of one send in order: unconfirmed passes by survey day and line, then the
+/// unconfirmed summaries, so that a summary is the newest reading FieldMesh gets. A resent pass
+/// keeps its seqNum.
+class SendPlan {
+ public:
+  explicit SendPlan(const SentPosition& confirmed);
+  /// Adds a survey day's pass file with its number of records, in any order of days; false when
+  /// the plan is full and a later day waits for the next send.
+  bool add_pass_file(const char* day, uint32_t records);
+  void set_summaries(uint32_t lines);         // lines in state/summaries.jsonl
+  /// The next reading to send; false when none is left.
+  bool next(ReadingPlace* out);
+  /// Moves the confirmed position past every reading up to and including last.
+  void confirm(const ReadingPlace& last);
+  /// Goes back to the reading after the confirmed position, to resend what was not confirmed.
+  void restart();
+  const SentPosition& confirmed() const;
 };
 
 class UploadBody {
@@ -418,23 +454,30 @@ class UploadBody {
 
 enum class ReplyAction : uint8_t { Confirm, ResendSmaller, Stop, RetryLater };
 
-/// As the FieldHub: Confirm only on 200 with received == sent; 400 or 413 resend smaller;
-/// 401 stop; 408, 429 and 5xx retry at the next send.
+/// As the FieldHub: Confirm only on 200 with received == sent; 401 or 403 stop; 408, 429, 5xx
+/// and no answer retry at the next send; 400, 413 and other 4xx resend smaller.
 ReplyAction judge_reply(int http_status, uint32_t received, uint32_t sent);
 
-struct Command { uint32_t cursor; char type[24]; const char* payload; };
+struct Command {
+  uint32_t cursor;                            // FieldMesh's sequence
+  char id[32];                                // FieldMesh's commandId, named when confirming
+  char type[24];
+  const char* payload;                        // the payload as JSON text, in Reply's buffer
+};
 
 struct Reply {
   uint32_t received;
   uint32_t server_time_unix;                  // 0 when absent
+  uint32_t next_cursor;                       // 0 when absent
   Command commands[8];
   uint8_t n_commands;
+  char payload_text[2048];                    // the commands' payloads
 };
 
 /// Reads FieldMesh's reply body; false when it is not valid JSON.
 bool parse_reply(const char* json, Reply* out);
 
-enum class CommandResult : uint8_t { Accepted, Rejected };
+enum class CommandResult : uint8_t { Accepted, Rejected };  // reported as ACCEPTED or INVALID
 
 /// Applies a trap settings command to a copy of c by the rules of parse_config.
 CommandResult apply_settings(const char* payload, const TrapConfig& c, TrapConfig* out,

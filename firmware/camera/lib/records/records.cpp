@@ -106,6 +106,34 @@ void format_utc(uint32_t utc_s, char out[21]) {
            (secs / 60) % 60, secs % 60);
 }
 
+// Day number counted from 1970-01-01 of a date (proleptic Gregorian calendar).
+int64_t days_from_civil(int year, unsigned month, unsigned day) {
+  year -= month <= 2 ? 1 : 0;
+  const int64_t era = (year >= 0 ? year : year - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(year - era * 400);
+  const unsigned doy = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1;
+  const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + static_cast<int64_t>(doe) - 719468;
+}
+
+// Reads ISO 8601 in UTC, such as 2026-05-14T21:05:09Z, as format_utc writes it.
+bool parse_utc(const char* t, uint32_t* out) {
+  int y;
+  unsigned mo, d, h, mi, se;
+  int used = 0;
+  if (strlen(t) != 20 || t[4] != '-' || t[7] != '-' || t[10] != 'T' || t[13] != ':' ||
+      t[16] != ':')
+    return false;
+  if (sscanf(t, "%4d-%2u-%2uT%2u:%2u:%2uZ%n", &y, &mo, &d, &h, &mi, &se, &used) != 6 || used != 20)
+    return false;
+  if (y < 1970 || mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59)
+    return false;
+  const int64_t s = days_from_civil(y, mo, d) * 86400 + h * 3600 + mi * 60 + se;
+  if (s > UINT32_MAX) return false;
+  *out = static_cast<uint32_t>(s);
+  return true;
+}
+
 const char* direction_text(Direction d) {
   switch (d) {
     case Direction::AtoB: return "AtoB";
@@ -125,6 +153,90 @@ void heights_text(uint8_t heights, char out[20]) {
     if (out[0]) strcat(out, ";");
     strcat(out, names[i]);
   }
+}
+
+bool parse_direction(const char* s, Direction* out) {
+  const Direction all[] = {Direction::AtoB, Direction::BtoA, Direction::BackA, Direction::BackB,
+                           Direction::Unknown};
+  for (Direction d : all) {
+    if (strcmp(s, direction_text(d)) == 0) {
+      *out = d;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Reads heights as heights_text writes them, such as "lowest;top".
+bool parse_heights(const char* s, uint8_t* out) {
+  uint8_t heights = 0;
+  while (*s) {
+    const char* end = strchr(s, ';');
+    const size_t n = end ? static_cast<size_t>(end - s) : strlen(s);
+    if (n == 6 && strncmp(s, "lowest", n) == 0) {
+      heights |= HEIGHT_LOWEST;
+    } else if (n == 6 && strncmp(s, "middle", n) == 0) {
+      heights |= HEIGHT_MIDDLE;
+    } else if (n == 3 && strncmp(s, "top", n) == 0) {
+      heights |= HEIGHT_TOP;
+    } else {
+      return false;
+    }
+    if (!end) break;
+    s = end + 1;
+    if (!*s) return false;
+  }
+  *out = heights;
+  return true;
+}
+
+bool parse_model_type(const char* s, ModelType* out) {
+  const ModelType all[] = {ModelType::None, ModelType::Empty, ModelType::FrogToad,
+                           ModelType::Lizard, ModelType::Snake, ModelType::Other};
+  for (ModelType t : all) {
+    if (strcmp(s, model_type_name(t)) == 0) {
+      *out = t;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Splits one CSV line into fields copied into text, each ending in '\0', with quoted fields
+// unquoted. Returns the number of fields, or -1 when the line is malformed or text too small.
+int split_csv(const char* line, char* text, size_t text_size, const char* fields[],
+              int max_fields) {
+  size_t n = 0;
+  int count = 0;
+  const char* p = line;
+  for (;;) {
+    if (count == max_fields || n >= text_size) return -1;
+    fields[count++] = text + n;
+    if (*p == '"') {
+      for (++p;; ++p) {
+        if (*p == '\0') return -1;
+        if (*p == '"') {
+          if (p[1] != '"') break;
+          ++p;
+        }
+        if (n + 1 >= text_size) return -1;
+        text[n++] = *p;
+      }
+      ++p;
+      if (*p != ',' && *p != '\0' && *p != '\n' && *p != '\r') return -1;
+    } else {
+      for (; *p != ',' && *p != '\0' && *p != '\n' && *p != '\r'; ++p) {
+        if (*p == '"' || n + 1 >= text_size) return -1;
+        text[n++] = *p;
+      }
+    }
+    text[n++] = '\0';
+    if (*p != ',') break;
+    ++p;
+  }
+  if (*p == '\r') ++p;
+  if (*p == '\n') ++p;
+  return *p == '\0' ? count : -1;
 }
 
 const char* noticed_by_text(const Pass& p) {
@@ -341,6 +453,49 @@ size_t pass_csv_line(const PassRecord& r, char* out, size_t size) {
   }
   t.add_char('\n');
   return t.done();
+}
+
+bool parse_pass_csv_line(const char* line, PassRecord* out, char* text, size_t text_size) {
+  const int kFields = 14;
+  const char* f[kFields];
+  if (split_csv(line, text, text_size, f, kFields) != kFields) return false;
+
+  PassRecord r{};
+  const size_t id_len = strlen(f[0]);
+  if (id_len == 0 || id_len >= sizeof r.pass_id) return false;
+  memcpy(r.pass_id, f[0], id_len + 1);
+  if (!parse_utc(f[1], &r.start_utc_s) || !parse_utc(f[2], &r.end_utc_s)) return false;
+  if (!parse_direction(f[3], &r.pass.direction)) return false;
+  if (!parse_heights(f[4], &r.pass.heights_a) || !parse_heights(f[5], &r.pass.heights_b))
+    return false;
+  if (strcmp(f[6], "lasers") == 0) {
+    r.pass.by_lasers = true;
+  } else if (strcmp(f[6], "pir") == 0) {
+    r.pass.by_pir = true;
+  } else if (strcmp(f[6], "both") == 0) {
+    r.pass.by_lasers = r.pass.by_pir = true;
+  } else {
+    return false;
+  }
+  r.pictures = f[7];
+  long dropped;
+  if (!parse_long(f[8], 0, 255, &dropped)) return false;
+  r.dropped_empty = static_cast<uint8_t>(dropped);
+  r.judged_empty = f[9];
+  if (strcmp(f[10], "true") == 0) {
+    r.pilot = true;
+  } else if (strcmp(f[10], "false") != 0) {
+    return false;
+  }
+  if (!parse_model_type(f[11], &r.model.type)) return false;
+  if (r.model.type == ModelType::None) {
+    if (f[12][0] || f[13][0]) return false;
+  } else if (!parse_float(f[12], 0.0f, 1.0f, &r.model.confidence)) {
+    return false;
+  }
+  r.model_version = f[13];
+  *out = r;
+  return true;
 }
 
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out,

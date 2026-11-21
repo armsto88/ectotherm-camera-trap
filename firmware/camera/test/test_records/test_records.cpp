@@ -112,6 +112,84 @@ static void test_a_model_version_with_a_comma_is_quoted() {
   TEST_ASSERT_NOT_NULL(strstr(line, ",empty,0.90,\"m1,0\"\n"));
 }
 
+static void test_a_stored_pass_line_reads_back() {
+  PassRecord r{};
+  strcpy(r.pass_id, "ECT_0A1B2C-2026-05-14-7");
+  r.start_utc_s = 1778792709;
+  r.end_utc_s = 1778792711;
+  r.pass = Pass{0, 0, Direction::BackB, HEIGHT_LOWEST | HEIGHT_TOP, HEIGHT_MIDDLE, true, true};
+  r.pictures = "a_1.jpg;a_2.jpg";
+  r.dropped_empty = 2;
+  r.judged_empty = "a_2.jpg";
+  r.pilot = true;
+  r.model = ModelResult{ModelType::Snake, 0.61f};
+  r.model_version = "m1,0";  // quoted in the file
+
+  char line[256], text[256], again[256];
+  TEST_ASSERT_TRUE(pass_csv_line(r, line, sizeof line) > 0);
+  PassRecord back;
+  TEST_ASSERT_TRUE_MESSAGE(parse_pass_csv_line(line, &back, text, sizeof text), line);
+  TEST_ASSERT_EQUAL_STRING(r.pass_id, back.pass_id);
+  TEST_ASSERT_EQUAL(r.start_utc_s, back.start_utc_s);
+  TEST_ASSERT_EQUAL(r.end_utc_s, back.end_utc_s);
+  TEST_ASSERT_EQUAL(Direction::BackB, back.pass.direction);
+  TEST_ASSERT_EQUAL(HEIGHT_LOWEST | HEIGHT_TOP, back.pass.heights_a);
+  TEST_ASSERT_EQUAL(HEIGHT_MIDDLE, back.pass.heights_b);
+  TEST_ASSERT_TRUE(back.pass.by_lasers && back.pass.by_pir);
+  TEST_ASSERT_EQUAL_STRING("a_1.jpg;a_2.jpg", back.pictures);
+  TEST_ASSERT_EQUAL(2, back.dropped_empty);
+  TEST_ASSERT_EQUAL_STRING("a_2.jpg", back.judged_empty);
+  TEST_ASSERT_TRUE(back.pilot);
+  TEST_ASSERT_EQUAL(ModelType::Snake, back.model.type);
+  TEST_ASSERT_EQUAL_FLOAT(0.61f, back.model.confidence);
+  TEST_ASSERT_EQUAL_STRING("m1,0", back.model_version);
+  TEST_ASSERT_TRUE(pass_csv_line(back, again, sizeof again) > 0);
+  TEST_ASSERT_EQUAL_STRING(line, again);
+
+  // Without a model, and with the line end of a file edited elsewhere.
+  TEST_ASSERT_TRUE(parse_pass_csv_line(
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,unknown,,,pir,,0,,false,,,\r\n",
+      &back, text, sizeof text));
+  TEST_ASSERT_EQUAL(ModelType::None, back.model.type);
+  TEST_ASSERT_EQUAL_STRING("", back.model_version);
+  TEST_ASSERT_EQUAL(Direction::Unknown, back.pass.direction);
+  TEST_ASSERT_TRUE(back.pass.by_pir && !back.pass.by_lasers);
+}
+
+static void test_malformed_pass_lines_are_refused() {
+  const char* good =
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,false,lizard,0.87,m1\n";
+  char text[256];
+  PassRecord r;
+  TEST_ASSERT_TRUE(parse_pass_csv_line(good, &r, text, sizeof text));
+  const char* bad[] = {
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,\n",  // a line of the pass file before the model's columns
+      "T-2026-05-14-1,2026-05-14 21:05:09,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,false,lizard,0.87,m1\n",
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoC,lowest,lowest,lasers,"
+      "a.jpg,0,,false,lizard,0.87,m1\n",
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,low,lowest,lasers,"
+      "a.jpg,0,,false,lizard,0.87,m1\n",
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,false,newt,0.87,m1\n",
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,false,lizard,1.5,m1\n",
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,false,,0.87,m1\n",  // a confidence without a type
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,maybe,lizard,0.87,m1\n",
+      "T-2026-05-14-1,2026-05-14T21:05:09Z,2026-05-14T21:05:11Z,AtoB,lowest,lowest,lasers,"
+      "a.jpg,0,,false,lizard,0.87,\"m1\n",  // a quote left open
+  };
+  for (const char* line : bad) {
+    TEST_ASSERT_FALSE_MESSAGE(parse_pass_csv_line(line, &r, text, sizeof text), line);
+  }
+  // A text buffer too small for the line's texts.
+  TEST_ASSERT_FALSE(parse_pass_csv_line(good, &r, text, 40));
+}
+
 static void test_pass_record_texts() {
   PassRecord r{};
   strcpy(r.pass_id, "T-2026-05-14-1");
@@ -498,8 +576,8 @@ static void test_fieldmesh_accepts_a_pass_record() {
   TEST_ASSERT_EQUAL_STRING(
       "{\"datetime\":\"2026-05-14T21:13:05Z\",\"nodeId\":\"ECT_0A1B2C\",\"seqNum\":1043,"
       "\"sensorPresent\":0,\"qualityFlags\":0,\"configVersion\":3,\"batVoltage\":null,"
-      "\"trapKind\":\"pass\",\"trapPassId\":\"ECT_0A1B2C-2026-05-14-17\",\"trapDirection\":\"AtoB\","
-      "\"trapHeightsA\":1,\"trapHeightsB\":1,\"trapNoticedBy\":\"lasers\",\"trapPilot\":false,"
+      "\"trapKind\":\"pass\",\"trapPassId\":\"ECT_0A1B2C-2026-05-14-17\","
+      "\"trapDirection\":\"AtoB\",\"trapHeightsA\":1,\"trapHeightsB\":1,\"trapNoticedBy\":\"lasers\",\"trapPilot\":false,"
       "\"trapModelType\":\"lizard\",\"trapModelConf\":0.87,\"trapModelVersion\":\"m1.0.0\","
       "\"trapPictures\":3}\n",
       line);
@@ -558,6 +636,8 @@ int main() {
   RUN_TEST(test_a_pass_leaves_its_record);
   RUN_TEST(test_a_trap_without_a_model);
   RUN_TEST(test_a_model_version_with_a_comma_is_quoted);
+  RUN_TEST(test_a_stored_pass_line_reads_back);
+  RUN_TEST(test_malformed_pass_lines_are_refused);
   RUN_TEST(test_pass_record_texts);
   RUN_TEST(test_line_that_does_not_fit_gives_zero);
   RUN_TEST(test_survey_day_runs_noon_to_noon);

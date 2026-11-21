@@ -61,7 +61,7 @@ test carrying `# spec: <id>`.
   Done when: `config_text` and `parse_config` round-trip every setting, `pass_type` picks the surest
   animal type and falls back to empty, and pass readings with and without a model are valid against
   the FieldMesh contract.
-- [ ] 2.7 Build the camera library `uplink` (`SentPosition`, `UploadBody`, `judge_reply`,
+- [x] 2.7 Build the camera library `uplink` (`SentPosition`, `UploadBody`, `judge_reply`,
   `parse_reply`, `next_send`), with ArduinoJson, following the FieldHub's upload rules.
   Tests:
   - `7dcfb88b` The day's results are sent

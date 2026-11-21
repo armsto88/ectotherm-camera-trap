@@ -70,6 +70,11 @@ const char* pass_csv_header();
 /// or 0 if it does not fit in size.
 size_t pass_csv_line(const PassRecord& r, char* out, size_t size);
 
+/// Reads a line of a pass file, as pass_csv_line writes it, back into out, so that a stored pass
+/// is sent as pass_reading_json. Its texts (pictures, judged-empty marks, model version) point
+/// into text, which holds text_size bytes; the watcher times are 0. False on a malformed line.
+bool parse_pass_csv_line(const char* line, PassRecord* out, char* text, size_t text_size);
+
 /// One fault as a CSV line for faults.csv, ending in a newline. Returns its length, or 0 if it
 /// does not fit in size.
 size_t fault_csv_line(uint32_t utc_s, FaultKind kind, const char* detail, char* out, size_t size);
