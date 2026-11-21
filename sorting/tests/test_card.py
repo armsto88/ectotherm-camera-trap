@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from conftest import SUMMARY_LINE, CardBuilder
 
-from trapsort.card import CardError, read_card
+from trapsort.card import CardError, import_card, read_card, read_season, write_sorting
 from trapsort.cli import main
+from trapsort.model import GROUPS
 
 
 def bench_run_card(card: CardBuilder) -> CardBuilder:
@@ -118,15 +120,111 @@ def test_malformed_fault_log_and_summary_raise_card_error(card: CardBuilder) -> 
         read_card(card.root)
 
 
-def test_import_command_reports_the_card(card: CardBuilder, capsys) -> None:
-    assert main(["import", str(bench_run_card(card).root)]) == 0
+def _files(root: Path) -> dict[str, bytes]:
+    return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+
+def test_an_imported_card_equals_the_original(card: CardBuilder, tmp_path: Path) -> None:
+    bench_run_card(card)
+    season = import_card(card.root, tmp_path / "season")
+    copy = tmp_path / "season" / "card"
+    assert _files(copy) == _files(card.root)
+    assert not (tmp_path / "season" / "card.partial").exists()
+    # The season read back points into the copy, not at the card.
+    assert all(p.file.is_relative_to(copy) for p in season.pictures)
+    assert len(season.passes) == 3
+
+
+def test_a_second_import_into_the_same_season_is_refused(card: CardBuilder, tmp_path: Path) -> None:
+    bench_run_card(card)
+    import_card(card.root, tmp_path / "season")
+    before = _files(tmp_path / "season" / "card")
+    card.add_pass("2026-05-16", "2026-05-16T20:00:00Z", "2026-05-16T20:00:02Z")
+    with pytest.raises(CardError, match="already holds a card"):
+        import_card(card.root, tmp_path / "season")
+    assert _files(tmp_path / "season" / "card") == before
+
+
+def test_a_malformed_card_is_not_copied(card: CardBuilder, tmp_path: Path) -> None:
+    bench_run_card(card)
+    (card.root / "passes" / "2026-05-14.csv").write_text("nonsense\n")
+    with pytest.raises(CardError):
+        import_card(card.root, tmp_path / "season")
+    assert not (tmp_path / "season" / "card").exists()
+
+
+def test_read_season_reads_back_what_write_sorting_wrote(card: CardBuilder, tmp_path: Path) -> None:
+    bench_run_card(card)
+    season_dir = tmp_path / "season"
+    season = import_card(card.root, season_dir)
+    first, second, third, fourth = season.pictures
+    first.empty, first.difference = False, 0.2125
+    second.empty, second.difference = False, 0.1875
+    third.empty, third.difference = True, 0.0125
+    # The fourth picture has not been judged.
+    write_sorting(season, season_dir)
+
+    back = read_season(season_dir)
+    assert [(p.name, p.empty, p.difference) for p in back.pictures] == [
+        (first.name, False, 0.2125),
+        (second.name, False, 0.1875),
+        (third.name, True, 0.0125),
+        (fourth.name, None, None),
+    ]
+    lines = (season_dir / "sorting.csv").read_text().splitlines()
+    assert lines[0] == "picture,pass_id,survey_day,empty,difference"
+    assert lines[3] == f"{third.name},{third.pass_id},2026-05-14,true,0.0125"
+
+
+def test_a_season_without_sorting_has_no_marks(card: CardBuilder, tmp_path: Path) -> None:
+    bench_run_card(card)
+    import_card(card.root, tmp_path / "season")
+    assert all(p.empty is None for p in read_season(tmp_path / "season").pictures)
+    with pytest.raises(CardError, match="not a season folder"):
+        read_season(tmp_path / "elsewhere")
+
+
+@pytest.mark.parametrize(
+    ("row", "message"),
+    [
+        ("nobody.jpg,X-1,2026-05-14,true,0.01", "is not on the card"),
+        ("{name},{pass_id},2026-05-14,maybe,0.01", "empty is not true or false"),
+        ("{name},{pass_id},2026-05-14,true,small", "difference is not a number"),
+        ("{name},{pass_id},true", "expected 5 fields"),
+    ],
+)
+def test_malformed_sorting_raises_card_error(
+    card: CardBuilder, tmp_path: Path, row: str, message: str
+) -> None:
+    bench_run_card(card)
+    season = import_card(card.root, tmp_path / "season")
+    picture = season.pictures[0]
+    (tmp_path / "season" / "sorting.csv").write_text(
+        "picture,pass_id,survey_day,empty,difference\n"
+        + row.format(name=picture.name, pass_id=picture.pass_id)
+        + "\n"
+    )
+    with pytest.raises(CardError, match=message):
+        read_season(tmp_path / "season")
+
+
+def test_groups_include_turtles() -> None:
+    assert GROUPS == ("frog", "toad", "newt", "lizard", "snake", "turtle", "other")
+
+
+def test_import_command_reports_and_copies_the_card(
+    card: CardBuilder, tmp_path: Path, capsys
+) -> None:
+    season_dir = tmp_path / "season"
+    assert main(["import", str(bench_run_card(card).root), str(season_dir)]) == 0
     out = capsys.readouterr().out
     assert "Trap ECT_0A1B2C: 2 survey days, 3 passes, 4 pictures, 1 faults" in out
     assert "2026-05-14      2 passes  1 empty-view pictures" in out
+    assert (season_dir / "card" / "trap.cfg").is_file()
 
 
-def test_import_command_fails_on_malformed_card(card: CardBuilder, capsys) -> None:
+def test_import_command_fails_on_malformed_card(card: CardBuilder, tmp_path: Path, capsys) -> None:
     bench_run_card(card)
     (card.root / "passes" / "2026-05-14.csv").write_text("nonsense\n")
-    assert main(["import", str(card.root)]) == 1
+    assert main(["import", str(card.root), str(tmp_path / "season")]) == 1
     assert "trapsort:" in capsys.readouterr().err

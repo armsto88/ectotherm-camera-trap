@@ -247,7 +247,7 @@ test carrying `# spec: <id>`.
   - `c6aae0b1` A sorted pass is exported
   - `3267db9c` An unsorted pass is exported
   Done when: an exported package passes the Camtrap DP validation.
-- [ ] 6.5 Change `trapsort import` to check a card and copy it into a season folder's `card/` with
+- [x] 6.5 Change `trapsort import` to check a card and copy it into a season folder's `card/` with
   `import_card`; add `read_season` and `write_sorting` for the empty marks; and move `Group` into
   `model.py` with turtle added, dropping `LabelledPicture` and `GroupModel` (changes what 6.1
   built).

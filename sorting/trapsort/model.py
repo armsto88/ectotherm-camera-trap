@@ -5,10 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, Literal
 
-if TYPE_CHECKING:
-    from .groups import Group
+# The broad groups people sort passes into.
+Group = Literal["frog", "toad", "newt", "lizard", "snake", "turtle", "other"]
+GROUPS: tuple[Group, ...] = ("frog", "toad", "newt", "lizard", "snake", "turtle", "other")
 
 # The values the trap writes into its pass files and fault log.
 DIRECTIONS = ("AtoB", "BtoA", "backA", "backB", "unknown")
@@ -19,14 +20,13 @@ FAULT_KINDS = ("beam_blocked", "beam_clear", "battery_low", "storage_low", "came
 
 @dataclass
 class Picture:
-    """One stored picture: file, pass_id, survey day, empty mark, group and confidence."""
+    """One stored picture: file, pass_id, survey day and empty mark."""
 
     file: Path
     pass_id: str | None  # None for the daily picture of the empty view
     survey_day: str
-    empty: bool | None = None  # None until it has been judged
-    group: Group | None = None
-    confidence: float | None = None
+    empty: bool | None = None  # the computer's empty mark; None until it has been judged
+    difference: float | None = None  # from its survey day's empty view, when judged
     judged_empty_on_trap: bool = False  # marked by the trap's filter in pilot mode
 
     @property
@@ -72,22 +72,6 @@ class Season:
     def survey_days(self) -> list[str]:
         days = {record.survey_day for record in self.passes} | set(self.empty_views)
         return sorted(days)
-
-
-@dataclass
-class LabelledPicture:
-    """A picture with a group from a person's name or a bucket label."""
-
-    file: Path
-    group: Group
-    name: str | None = None
-
-
-class GroupModel:
-    """A trained group model: predict(picture) gives a group and a confidence."""
-
-    def predict(self, picture: Picture) -> tuple[Group, float]:
-        raise NotImplementedError
 
 
 @dataclass

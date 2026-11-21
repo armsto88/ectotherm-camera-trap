@@ -7,11 +7,11 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from .card import CardError, read_card
+from .card import CardError, import_card
 
 
 def _import(args: argparse.Namespace) -> int:
-    season = read_card(args.card)
+    season = import_card(args.card, args.season)
     pictures = season.pictures
     print(
         f"Trap {season.trap_id}: {len(season.survey_days)} survey days, "
@@ -24,6 +24,7 @@ def _import(args: argparse.Namespace) -> int:
         print(f"  {day}  {per_day[day]:5d} passes  {views} empty-view pictures")
     for fault in season.faults:
         print(f"  fault {fault['time_utc']:%Y-%m-%d %H:%M}Z {fault['fault']} {fault['detail']}")
+    print(f"Copied into {Path(args.season) / 'card'}")
     return 0
 
 
@@ -31,8 +32,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="trapsort", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    importing = commands.add_parser("import", help="read and check a copy of a trap's card")
-    importing.add_argument("card", type=Path, help="the folder holding the card copy")
+    importing = commands.add_parser(
+        "import", help="check a trap's card and copy it into a new season folder"
+    )
+    importing.add_argument("card", type=Path, help="the card, or a folder holding a copy of it")
+    importing.add_argument("season", type=Path, help="the season folder to copy it into")
     importing.set_defaults(run=_import)
 
     args = parser.parse_args(argv)

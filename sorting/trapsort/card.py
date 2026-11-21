@@ -7,6 +7,11 @@ The card holds:
     pictures/YYYY-MM-DD/       <pass_id>_<n>.jpg, and empty_<HHMM>.jpg for the daily picture
     faults.csv                 time_utc,fault,detail
     state/summaries.jsonl      one FieldMesh reading per line, one line per day
+
+A season on the computer is a folder:
+
+    card/                      the card copy, as import_card copied it; never changed
+    sorting.csv                the computer's empty marks, written again by each sort
 """
 
 from __future__ import annotations
@@ -14,6 +19,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,6 +38,7 @@ PASS_COLUMNS = [
     "judged_empty",
 ]
 FAULT_COLUMNS = ["time_utc", "fault", "detail"]
+SORTING_COLUMNS = ["picture", "pass_id", "survey_day", "empty", "difference"]
 DEFAULT_TRAP_ID = "ECT_UNSET"
 
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -62,6 +69,81 @@ def read_card(card: Path) -> Season:
         faults=_read_faults(card / "faults.csv"),
         summaries=_read_summaries(card / "state" / "summaries.jsonl"),
     )
+
+
+def import_card(card: Path, season_dir: Path) -> Season:
+    """Checks a card with read_card and copies it into season_dir/card; raises CardError, also
+    when the season already holds a card."""
+    read_card(card)
+    season_dir = Path(season_dir)
+    target = season_dir / "card"
+    if target.exists():
+        raise CardError(f"{season_dir}: the season already holds a card; use a new season folder")
+    season_dir.mkdir(parents=True, exist_ok=True)
+    # Copied under another name first, so that a copy broken off never looks like a card.
+    partial = season_dir / "card.partial"
+    if partial.exists():
+        shutil.rmtree(partial)
+    shutil.copytree(card, partial)
+    partial.rename(target)
+    return read_card(target)
+
+
+def read_season(season_dir: Path) -> Season:
+    """Reads season_dir/card and, where present, the empty marks in sorting.csv."""
+    season_dir = Path(season_dir)
+    if not (season_dir / "card").is_dir():
+        raise CardError(f"{season_dir}: not a season folder; it holds no card/")
+    season = read_card(season_dir / "card")
+    path = season_dir / "sorting.csv"
+    if path.exists():
+        _read_sorting(path, season)
+    return season
+
+
+def write_sorting(season: Season, season_dir: Path) -> None:
+    """Writes each picture's empty mark and difference to season_dir/sorting.csv."""
+    path = Path(season_dir) / "sorting.csv"
+    partial = path.with_suffix(".partial")
+    with partial.open("w", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(SORTING_COLUMNS)
+        for picture in season.pictures:
+            writer.writerow(
+                [
+                    picture.name,
+                    picture.pass_id,
+                    picture.survey_day,
+                    "" if picture.empty is None else str(picture.empty).lower(),
+                    "" if picture.difference is None else f"{picture.difference:.4f}",
+                ]
+            )
+    partial.replace(path)
+
+
+def _read_sorting(path: Path, season: Season) -> None:
+    by_name = {picture.name: picture for picture in season.pictures}
+    with path.open(newline="") as f:
+        rows = list(csv.reader(f))
+    if not rows or rows[0] != SORTING_COLUMNS:
+        raise CardError(f"{path}:1: expected the header {','.join(SORTING_COLUMNS)}")
+    for number, row in enumerate(rows[1:], start=2):
+        if not row:
+            continue
+        where = f"{path}:{number}"
+        if len(row) != len(SORTING_COLUMNS):
+            raise CardError(f"{where}: expected {len(SORTING_COLUMNS)} fields, found {len(row)}")
+        values = dict(zip(SORTING_COLUMNS, row))
+        picture = by_name.get(values["picture"])
+        if picture is None:
+            raise CardError(f"{where}: picture {values['picture']} is not on the card")
+        if values["empty"] not in ("true", "false", ""):
+            raise CardError(f"{where}: empty is not true or false")
+        picture.empty = None if values["empty"] == "" else values["empty"] == "true"
+        try:
+            picture.difference = float(values["difference"]) if values["difference"] else None
+        except ValueError:
+            raise CardError(f"{where}: difference is not a number") from None
 
 
 def _read_config(path: Path) -> dict[str, str]:
